@@ -52,7 +52,10 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.${{ github.run_number }} pc\installer\jesienna.iss
+          $out = & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.${{ github.run_number }} pc\installer\jesienna.iss 2>&1
+          $code = $LASTEXITCODE
+          $out | Select-Object -Last 15 | ForEach-Object { if ($code -ne 0) { Write-Output "::error::$_" } else { Write-Output $_ } }
+          exit $code
       - name: Wersja przenośna (zip)
         shell: pwsh
         run: |

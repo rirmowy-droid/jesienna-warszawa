@@ -2,7 +2,7 @@
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
-#define Stage "..\stage"
+#define Stage "..\..\stage"
 
 [Setup]
 AppId={{6C1F2D7A-3B7E-4E55-9C2A-5A1E0B7D9A11}
@@ -13,7 +13,7 @@ AppPublisherURL=https://github.com/rirmowy-droid/jesienna-warszawa
 DefaultDirName={autopf}\Jesienna Warszawa
 DefaultGroupName=Jesienna Warszawa
 DisableProgramGroupPage=yes
-OutputDir=..\dist
+OutputDir=..\..\dist
 OutputBaseFilename=JesiennaWarszawa-Setup
 Compression=lzma2/max
 SolidCompression=yes
