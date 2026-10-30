@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +32,19 @@ jobs:
 
       - name: Build
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          set -o pipefail
+          gradle assembleDebug --no-daemon 2>&1 | tee build.log
+
+      - name: Show the error
+        if: failure()
+        working-directory: android
+        run: |
+          grep -nE "What went wrong|error:|Error|FAILURE|Could not|not found" build.log | head -40 > err.txt || true
+          tail -25 build.log >> err.txt
+          msg=$(sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g' err.txt | cut -c1-60000)
+          echo "::error title=Gradle::${msg}"
 
       - name: Rename
         run: cp android/app/build/outputs/apk/debug/app-debug.apk jesienna-warszawa.apk
