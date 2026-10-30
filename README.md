@@ -48,3 +48,14 @@ Zmiany w trakcie grania działają od razu (głośność, intensywność, solo, 
 Po każdej zmianie w repozytorium GitHub Actions buduje APK (ok. 5–10 minut) i publikuje go w zakładce **Releases**.
 Pobierz `jesienna-warszawa.apk` na telefonie i otwórz; za pierwszym razem Android poprosi o zgodę na instalację z tego źródła.
 Kolejne wersje instalują się na poprzednią (wszystkie są podpisane tym samym kluczem z `android/jesienna.keystore` – to klucz tylko do prywatnej instalacji, nie do Sklepu Play).
+
+## Wersja na PC (VST3 + aplikacja)
+
+Folder `pc/` – wtyczka VST3 (FL Studio, Reaper, Ableton, Cubase…) i samodzielna aplikacja dla Windows, zbudowane na JUCE.
+Instalator `JesiennaWarszawa-Setup.exe` budują GitHub Actions (`.github/workflows/pc.yml`) i wrzucają do zakładki **Releases** (tagi `pc-N`).
+
+- **Gitara:** bramka, kompresor, przester (kostka), 7 modeli wzmacniaczy (oversampling ×4), 25 IR kolumn (21 prawdziwych 4×12 Greenback/V30 na CC0 + 4 syntetyczne komba), 5 charakterów mikrofonu, chorus/wibrato/tremolo, delay w tempie DAW, tuner.
+- **Zespół:** perkusja (Salamander), kontrabas, Rhodes albo fortepian; 16 utworów (ballady, standardy, bluesy), styl swing/ballada/prosto/bossa, energia, swing. Gra w tempie, metrum i takcie projektu DAW (albo we własnym tempie).
+- **Przestrzeń i wyjście:** 26 przestrzeni (kluby, tunele, ulice, kościoły, płyta, sprężyny), barwa (kasety, taśma szpulowa, gramofon, telefon), taśma (wow, nasycenie, szum), limiter, 8 gotowych brzmień.
+
+Kod w `pc/` jest na licencji AGPL v3 (JUCE). Dane instalują się do `C:\ProgramData\Jesienna Warszawa`.
