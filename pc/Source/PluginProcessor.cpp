@@ -61,11 +61,16 @@ APVTS::ParameterLayout JesiennaProcessor::createLayout()
     StringArray mics; for (auto* m : jw::micNames()) mics.add (U (m));
     C ("mic", "Mikrofon", mics, 1);
     B ("modOn", "Modulacja włączona", false);
-    C ("modType", "Modulacja – rodzaj", U ({ "Chorus", "Wibrato", "Tremolo" }), 0);
+    C ("modType", "Modulacja – rodzaj", jw::modTypeNames(), 0);
     F ("modRate", "Modulacja – szybkość", 0, 1, 0.3f, ten); F ("modDepth", "Modulacja – głębokość", 0, 1, 0.3f, ten);
     B ("dlyOn", "Delay włączony", true);
     F ("dlyMix", "Delay – miks", 0, 1, 0.15f, pct); F ("dlyFb", "Delay – powtórzenia", 0, 0.95f, 0.3f, pct); F ("dlyTone", "Delay – barwa", 0, 1, 0.5f, ten);
     C ("dlyDiv", "Delay – podział", U ({ "ćwierćnuta", "ósemka z kropką", "ósemka", "triola ćwierćnutowa", "półnuta", "szesnastka" }), 1);
+    C ("dlyType", "Delay – rodzaj", jw::delayTypeNames(), 0);
+    B ("revOn", "Pogłos włączony", false);
+    C ("revType", "Pogłos – rodzaj", jw::reverbNames(), 0);
+    F ("revMix", "Pogłos – miks", 0, 1, 0.25f, pct); F ("revDecay", "Pogłos – długość", 0, 1, 0.7f, ten);
+    F ("revTone", "Pogłos – barwa", 0, 1, 0.6f, ten); F ("revDwell", "Pogłos – uderzenie", 0, 1, 0.3f, ten);
     F ("gtrLevel", "Gitara – głośność", 0, 1.5f, 0.8f, pct); F ("gtrPan", "Gitara – panorama", -1, 1, 0, pan); F ("gtrSpace", "Gitara – przestrzeń", 0, 1, 0.35f, pct);
 
     // ---- band ----
@@ -127,7 +132,7 @@ void JesiennaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     hissHp.coefficients = dsp::IIR::Coefficients<float>::makeHighPass (sr, 2500);
     tapeLpL.reset(); tapeLpR.reset(); hissHp.reset();
     setLatencySamples (rig.latencySamples());
-    lastCab = lastRoom = lastColour = -1;   // (re)load IRs at the new rate (captured amps re-prepare themselves)
+    lastCab = lastRoom = lastColour = lastRevType = -1;   // (re)load IRs at the new rate (captured amps re-prepare themselves)
     timerCallback();
 }
 
@@ -172,6 +177,16 @@ void JesiennaProcessor::timerCallback()
         lastNamPedal = pd; ++loadingJobs;
         const File f = pd >= 0 && pd < namPedals.size() ? namPedals[pd].file : File();
         pool.addJob ([this, f] { rig.pedalNam.load (f); --loadingJobs; });
+    }
+    if (const int t = pi ("revType"); pf ("revOn") > 0.5f && (t != lastRevType || std::abs (pf ("revDecay") - lastRevDecay) > 0.02f))
+    {
+        if (++revSettle >= 3 || t != lastRevType)        // wait until the decay knob rests (0.3 s) before re-shaping the recording
+        {
+            revSettle = 0; lastRevType = t; lastRevDecay = pf ("revDecay"); ++loadingJobs;
+            const auto f = dataFolder.getChildFile (jw::reverbIrs()[(size_t) jlimit (0, (int) jw::reverbIrs().size() - 1, t)].file);
+            const float d = lastRevDecay;
+            pool.addJob ([this, f, d] { rig.reverb.load (f, d); --loadingJobs; });
+        }
     }
     if (const int r = pi ("room"); r != lastRoom && r < rooms.size()) { lastRoom = r; loadIr (space, rooms[r].file, 6.0, true); }
     if (const int c = pi ("colour"); c != lastColour) { lastColour = c; if (c >= 1 && c - 1 < colours.size()) loadIr (colour, colours[c - 1].file, 1.0, true); }
@@ -246,8 +261,9 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
     rp.modOn = pf ("modOn") > 0.5f; rp.dlyOn = pf ("dlyOn") > 0.5f; rp.odDrive = pf ("odDrive"); rp.odTone = pf ("odTone"); rp.odLevel = pf ("odLevel");
     rp.amp = pi ("amp"); rp.ampGain = pf ("ampGain"); rp.bass = pf ("bass"); rp.mid = pf ("mid"); rp.treble = pf ("treble"); rp.presence = pf ("presence"); rp.master = pf ("master");
     rp.cab = pi ("cab"); rp.cabMix = rp.cab == 0 ? 0.0f : pf ("cabMix"); rp.mic = pi ("mic");
-    rp.modType = pi ("modType") + 1; rp.modRate = pf ("modRate"); rp.modDepth = pf ("modDepth");
-    rp.dlyMix = pf ("dlyMix"); rp.dlyFb = pf ("dlyFb"); rp.dlyTone = pf ("dlyTone"); rp.dlyDiv = pi ("dlyDiv");
+    rp.modType = pi ("modType"); rp.modRate = pf ("modRate"); rp.modDepth = pf ("modDepth");
+    rp.dlyMix = pf ("dlyMix"); rp.dlyFb = pf ("dlyFb"); rp.dlyTone = pf ("dlyTone"); rp.dlyDiv = pi ("dlyDiv"); rp.dlyType = pi ("dlyType");
+    rp.revOn = pf ("revOn") > 0.5f; rp.revMix = pf ("revMix"); rp.revTone = pf ("revTone"); rp.revDwell = pf ("revDwell");
     rp.level = pf ("gtrLevel"); rp.pan = pf ("gtrPan");
     double bpm = pf ("tempo");
     auto* ph = getPlayHead(); Optional<AudioPlayHead::PositionInfo> pos; if (ph != nullptr) pos = ph->getPosition();
@@ -307,12 +323,12 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 const std::vector<JesiennaProcessor::Preset>& JesiennaProcessor::presets()
 {
     static const std::vector<Preset> p {
-        { "Jesienna noc – czysty jazz", { {"amp",7},{"ampGain",.45f},{"bass",.55f},{"treble",.45f},{"cab",2},{"mic",2},{"dlyOn",1},{"dlyMix",.12f},{"gtrSpace",.4f} } },
-        { "Mgła – ambient (chorus i długi delay)", { {"amp",9},{"ampGain",.4f},{"treble",.55f},{"cab",2},{"mic",3},{"modOn",1},{"modType",0},{"modRate",.2f},{"modDepth",.5f},{"dlyOn",1},{"dlyMix",.35f},{"dlyFb",.6f},{"dlyTone",.3f},{"dlyDiv",0},{"gtrSpace",.7f},{"spaceMix",.7f},{"room",22} } },
-        { "Tremolo w deszczu", { {"amp",8},{"ampGain",.45f},{"cab",2},{"mic",2},{"modOn",1},{"modType",2},{"modRate",.45f},{"modDepth",.55f},{"dlyOn",1},{"dlyMix",.18f},{"gtrSpace",.6f},{"spaceMix",.6f} } },
-        { "Tweed blues", { {"amp",18},{"ampGain",.5f},{"mid",.6f},{"cab",4},{"mic",1},{"dlyOn",1},{"dlyMix",.1f},{"dlyDiv",2},{"gtrSpace",.25f} } },
+        { "Jesienna noc – czysty jazz", { {"amp",7},{"ampGain",.45f},{"bass",.55f},{"treble",.45f},{"cab",2},{"mic",2},{"dlyOn",1},{"dlyType",1},{"dlyMix",.12f},{"revOn",1},{"revType",0},{"revMix",.22f},{"gtrSpace",.35f} } },
+        { "Mgła – ambient (chorus i długi delay)", { {"amp",9},{"ampGain",.4f},{"treble",.55f},{"cab",2},{"mic",3},{"modOn",1},{"modType",0},{"modRate",.2f},{"modDepth",.5f},{"dlyOn",1},{"dlyType",0},{"dlyMix",.35f},{"dlyFb",.6f},{"dlyTone",.3f},{"dlyDiv",0},{"revOn",1},{"revType",3},{"revMix",.35f},{"revDecay",.95f},{"gtrSpace",.6f},{"spaceMix",.7f},{"room",22} } },
+        { "Tremolo w deszczu", { {"amp",8},{"ampGain",.45f},{"cab",2},{"mic",2},{"modOn",1},{"modType",2},{"modRate",.45f},{"modDepth",.55f},{"dlyOn",1},{"dlyType",0},{"dlyMix",.18f},{"revOn",1},{"revType",1},{"revMix",.35f},{"revDwell",.6f},{"gtrSpace",.45f},{"spaceMix",.6f} } },
+        { "Tweed blues", { {"amp",18},{"ampGain",.5f},{"mid",.6f},{"cab",4},{"mic",1},{"dlyOn",1},{"dlyType",0},{"dlyMix",.1f},{"dlyDiv",2},{"revOn",1},{"revType",0},{"revMix",.2f},{"gtrSpace",.25f} } },
         { "Brytyjski crunch + Tube Screamer", { {"amp",23},{"ampGain",.5f},{"cab",9},{"mic",1},{"odOn",1},{"pedal",1},{"odDrive",.3f},{"odLevel",.6f},{"dlyOn",1},{"dlyMix",.12f},{"gtrSpace",.25f} } },
-        { "Lead na solo", { {"amp",31},{"ampGain",.5f},{"mid",.65f},{"cab",21},{"mic",1},{"odOn",1},{"pedal",2},{"odDrive",.25f},{"odLevel",.6f},{"dlyOn",1},{"dlyMix",.22f},{"dlyFb",.4f},{"dlyDiv",1},{"gtrSpace",.35f} } },
+        { "Lead na solo", { {"amp",31},{"ampGain",.5f},{"mid",.65f},{"cab",21},{"mic",1},{"odOn",1},{"pedal",2},{"odDrive",.25f},{"odLevel",.6f},{"dlyOn",1},{"dlyType",1},{"dlyMix",.22f},{"dlyFb",.4f},{"dlyDiv",1},{"revOn",1},{"revType",3},{"revMix",.18f},{"gtrSpace",.3f} } },
         { "Ciężko – 5150", { {"amp",35},{"ampGain",.5f},{"bass",.6f},{"mid",.45f},{"cab",16},{"mic",1},{"gate",-55},{"dlyOn",0},{"gtrSpace",.15f} } },
         { "Stare radio / kaseta", { {"amp",6},{"ampGain",.5f},{"cab",0},{"mic",4},{"modOn",1},{"modType",2},{"modRate",.4f},{"modDepth",.25f},{"tape",.6f},{"colour",1},{"colourMix",.7f} } },
     };
@@ -324,7 +340,7 @@ void JesiennaProcessor::setCurrentProgram (int index)
     if (index < 0 || index >= (int) presets().size()) return;
     currentPreset = index;
     static const char* guitarIds[] = { "inGain","gate","comp","odOn","pedal","odDrive","odTone","odLevel","amp","ampGain","bass","mid","treble","presence","master",
-                                       "cab","cabMix","mic","modOn","modType","modRate","modDepth","dlyOn","dlyMix","dlyFb","dlyTone","dlyDiv","gtrSpace","tape","colour" };
+                                       "cab","cabMix","mic","modOn","modType","modRate","modDepth","dlyOn","dlyMix","dlyFb","dlyTone","dlyDiv","dlyType","revOn","revType","revMix","revDecay","revTone","revDwell","gtrSpace","tape","colour" };
     for (auto* id : guitarIds)
         if (auto* prm = apvts.getParameter (id)) prm->setValueNotifyingHost (prm->getDefaultValue());
     for (auto& [id, v] : presets()[(size_t) index].values)

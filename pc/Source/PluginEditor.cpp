@@ -311,13 +311,14 @@ void Pedal::resized()
 {
     auto r = getLocalBounds().reduced (14, 12);
     if (type != nullptr) type->setBounds (r.removeFromTop (26).reduced (4, 0));
+    if (type2 != nullptr) { r.removeFromTop (3); type2->setBounds (r.removeFromTop (24).reduced (4, 0)); }
     r.removeFromTop (4);
     auto knobRow = r.removeFromTop (r.getHeight() - 104);
     const int n = knobs.size();
     if (n > 0)
     {
-        const int kw = jmin (78, knobRow.getWidth() / jmax (1, (n > 3 ? 2 : n)));
-        if (n <= 3)
+        const int kw = jmin (78, knobRow.getWidth() / jmax (1, (n > 4 ? 2 : n)));
+        if (n <= 4)
         {
             auto row = knobRow.withSizeKeepingCentre (kw * n, jmin (knobRow.getHeight(), kw + 16));
             for (auto* k : knobs) k->setBounds (row.removeFromLeft (kw));
@@ -538,12 +539,14 @@ RigPage::RigPage (JesiennaProcessor& p)
       input (p.apvts, U ("Wejście"), Colour (0xff60666c), {}, {}, { { "inGain", U ("Gain") }, { "gate", U ("Bramka") }, { "comp", U ("Kompresja") } }),
       drive (p.apvts, U ("Przester"), pedalColour ({}), "odOn", "pedal", { { "odDrive", U ("Drive") }, { "odTone", U ("Ton") }, { "odLevel", U ("Poziom") } }),
       mod (p.apvts, U ("Modulacja"), Colour (0xff5b3f8c), "modOn", "modType", { { "modRate", U ("Szybkość") }, { "modDepth", U ("Głębia") } }),
-      delay (p.apvts, U ("Delay"), Colour (0xff1f6f73), "dlyOn", "dlyDiv", { { "dlyMix", U ("Miks") }, { "dlyFb", U ("Powtórz.") }, { "dlyTone", U ("Barwa") } }),
+      delay (p.apvts, U ("Delay"), Colour (0xff1f6f73), "dlyOn", "dlyType", { { "dlyMix", U ("Miks") }, { "dlyFb", U ("Powtórz.") }, { "dlyTone", U ("Barwa") } }),
+      reverb (p.apvts, U ("Pogłos"), Colour (0xff8a7a5c), "revOn", "revType", { { "revMix", U ("Miks") }, { "revDecay", U ("Długość") }, { "revTone", U ("Barwa") }, { "revDwell", U ("Siła") } }),
       amp (p), cab (p),
       level (p.apvts, "gtrLevel", U ("Głośność")), pan (p.apvts, "gtrPan", U ("Panorama")), space (p.apvts, "gtrSpace", U ("Przestrzeń")),
       inCh (p.apvts, "inCh")
 {
-    for (auto* c : std::initializer_list<Component*> { &input, &drive, &mod, &delay, &amp, &cab, &level, &pan, &space, &inCh }) addAndMakeVisible (c);
+    delay.addSecondType (p.apvts, "dlyDiv");
+    for (auto* c : std::initializer_list<Component*> { &input, &drive, &mod, &delay, &reverb, &amp, &cab, &level, &pan, &space, &inCh }) addAndMakeVisible (c);
     auto updDrive = [this]
     {
         const int i = drive.type->getSelectedItemIndex();
@@ -559,7 +562,7 @@ RigPage::RigPage (JesiennaProcessor& p)
 void RigPage::paint (Graphics& g)
 {
     // pedalboard
-    auto board = Rectangle<float> (12, 8, (float) getWidth() - 24, 268);
+    auto board = Rectangle<float> (12, 8, (float) getWidth() - 24, 284);
     g.setGradientFill (ColourGradient (Colour (0xff2a2420), board.getX(), board.getY(), Colour (0xff161210), board.getX(), board.getBottom(), false));
     g.fillRoundedRectangle (board, 12);
     for (float y = board.getY() + 30; y < board.getBottom(); y += 54) { g.setColour (Colours::black.withAlpha (0.35f)); g.fillRect (board.getX() + 10, y, board.getWidth() - 20, 6.0f); }
@@ -580,10 +583,11 @@ void RigPage::paint (Graphics& g)
     cable ({ (float) input.getRight() - 4, jy (input) }, { (float) drive.getX() + 4, jy (drive) }, 26);
     cable ({ (float) drive.getRight() - 4, jy (drive) }, { (float) mod.getX() + 4, jy (mod) }, 26);
     cable ({ (float) mod.getRight() - 4, jy (mod) }, { (float) delay.getX() + 4, jy (delay) }, 26);
+    cable ({ (float) delay.getRight() - 4, jy (delay) }, { (float) reverb.getX() + 4, jy (reverb) }, 26);
     // from the delay down to the amp's input (the order here is drawn like a real rig; the sound runs modulation and delay after the amp)
     const float ampIn = (float) amp.getX() + 4 + 22 + 30, ampInY = (float) amp.getY() + 4 + (amp.getHeight() - 8) * 0.40f + ((amp.getHeight() - 8) * 0.60f - 20) / 2 - 4;
     {
-        Path p; Point<float> a ((float) delay.getRight() - 4, jy (delay)), b (ampIn, ampInY);
+        Path p; Point<float> a ((float) reverb.getRight() - 4, jy (reverb)), b (ampIn, ampInY);
         p.startNewSubPath (a); p.cubicTo (a.translated (60, 30), { a.x + 40, board.getBottom() + 40 }, { (a.x + b.x) / 2 + 200, board.getBottom() + 24 });
         p.cubicTo ({ b.x - 60, board.getBottom() + 10 }, b.translated (-60, -40), b);
         g.setColour (Colours::black.withAlpha (0.4f)); g.strokePath (p, PathStrokeType (7.0f), AffineTransform::translation (0, 3));
@@ -602,13 +606,14 @@ void RigPage::paint (Graphics& g)
 
 void RigPage::resized()
 {
-    const int top = 22, ph = 240;
-    int x = 46;
-    input.setBounds (x, top, 190, ph); x += 190 + 34;
-    drive.setBounds (x, top, 240, ph); x += 240 + 34;
-    mod.setBounds (x, top, 210, ph); x += 210 + 34;
-    delay.setBounds (x, top, 240, ph);
-    const int rowY = 300, rowH = getHeight() - rowY - 10;
+    const int top = 22, ph = 256, gap = 20;
+    int x = 40;
+    input.setBounds (x, top, 168, ph); x += 168 + gap;
+    drive.setBounds (x, top, 222, ph); x += 222 + gap;
+    mod.setBounds (x, top, 222, ph); x += 222 + gap;
+    delay.setBounds (x, top, 222, ph); x += 222 + gap;
+    reverb.setBounds (x, top, jmin (222, getWidth() - 36 - x), ph);
+    const int rowY = 312, rowH = getHeight() - rowY - 10;
     amp.setBounds (20, rowY + 10, 640, rowH - 10);
     cab.setBounds (676, rowY, 330, rowH);
     auto strip = Rectangle<int> (1030, rowY + 30, 150, rowH - 40);

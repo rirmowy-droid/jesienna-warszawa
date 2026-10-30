@@ -64,7 +64,8 @@ public:
     void setColour (Colour c) { body = c; repaint(); }
     String title; Colour body;
     std::unique_ptr<Switch> foot;
-    std::unique_ptr<Choice> type;
+    std::unique_ptr<Choice> type, type2;
+    void addSecondType (APVTS& s, const String& id) { type2 = std::make_unique<Choice> (s, id); addAndMakeVisible (*type2); }
     OwnedArray<Knob> knobs;
 };
 
@@ -102,7 +103,7 @@ public:
     void paint (Graphics&) override;
     void resized() override;
     JesiennaProcessor& proc;
-    Pedal input, drive, mod, delay;
+    Pedal input, drive, mod, delay, reverb;
     AmpHead amp;
     Cabinet cab;
     Knob level, pan, space;

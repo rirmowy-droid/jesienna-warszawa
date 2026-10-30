@@ -61,7 +61,7 @@ private:
     juce::dsp::IIR::Filter<float> tapeLpL, tapeLpR, hissHp;
     float wowPh = 0, flutPh = 0; juce::Random noise;
     juce::ThreadPool pool { 2 };
-    int lastCab = -1, lastRoom = -1, lastColour = -1, lastKeys = -1, lastNamAmp = -99, lastNamPedal = -99; bool kitRequested = false;
+    int lastCab = -1, lastRoom = -1, lastColour = -1, lastKeys = -1, lastNamAmp = -99, lastNamPedal = -99, lastRevType = -1, revSettle = 0; float lastRevDecay = -1; bool kitRequested = false;
     std::shared_ptr<jw::Instrument> kit, bass, keys;
     int currentPreset = 0;
 

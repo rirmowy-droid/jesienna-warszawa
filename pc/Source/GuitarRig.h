@@ -3,6 +3,7 @@
 #pragma once
 #include <juce_dsp/juce_dsp.h>
 #include "Assets.h"
+#include "Effects.h"
 #include "NamSlot.h"
 
 namespace jw {
@@ -54,7 +55,8 @@ struct RigParams
     bool  modOn = false, dlyOn = true; float ampGain = 0.35f, bass = 0.5f, mid = 0.5f, treble = 0.5f, presence = 0.5f, master = 0.6f;
     int   cab = 0; float cabMix = 1.0f; int mic = 1;
     int   modType = 0; float modRate = 0.3f, modDepth = 0.3f;
-    float dlyMix = 0.15f, dlyFb = 0.3f, dlyTone = 0.5f; int dlyDiv = 1; double bpm = 120;
+    float dlyMix = 0.15f, dlyFb = 0.3f, dlyTone = 0.5f; int dlyDiv = 1, dlyType = 0; double bpm = 120;
+    bool  revOn = false; float revMix = 0.25f, revTone = 0.6f, revDwell = 0.3f;
     float level = 0.8f, pan = 0;
 };
 
@@ -77,26 +79,23 @@ class GuitarRig
 {
 public:
     NamSlot ampNam, pedalNam;
+    ReverbPedal reverb;
 
     void prepare (double sr, int maxBlock)
     {
         sampleRate = sr; blockSize = maxBlock;
-        juce::dsp::ProcessSpec mono { sr, (juce::uint32) maxBlock, 1 }, stereo { sr, (juce::uint32) maxBlock, 2 };
+        juce::dsp::ProcessSpec mono { sr, (juce::uint32) maxBlock, 1 };
         oversampler.initProcessing ((size_t) maxBlock);
         juce::dsp::ProcessSpec osSpec { sr * 4, (juce::uint32) maxBlock * 4, 1 };
         for (auto* f : { &preHp, &interLp, &coupling }) { f->prepare (osSpec); f->reset(); }
         for (auto* f : { &odHp, &odLp, &odTilt, &bassF, &midF, &trebleF, &presF, &mic1, &mic2, &mic3 }) { f->prepare (mono); f->reset(); }
         comp.prepare (mono); comp.setAttack (8); comp.setRelease (120);
         cabConv.prepare (mono); cabConv.reset();
-        chorus.prepare (stereo); chorus.setCentreDelay (7); chorus.setFeedback (0.1f);
-        vib.prepare (mono); vib.setMaximumDelayInSamples ((int) (sr * 0.03));
-        dlyL.prepare (mono); dlyR.prepare (mono);
-        dlyL.setMaximumDelayInSamples ((int) (sr * 3)); dlyR.setMaximumDelayInSamples ((int) (sr * 3));
-        dlyLpL.prepare (mono); dlyLpR.prepare (mono);
         early.prepare (mono); early.setMaximumDelayInSamples ((int) (sr * 0.05));
         mono1.setSize (1, maxBlock); dryBuf.setSize (1, maxBlock); work.setSize (2, maxBlock);
         lastAmp = -1; lastMic = -1; gateEnv = 0; gateGain = 0; sag = 0;
         ampNam.prepare (sr, maxBlock); pedalNam.prepare (sr, maxBlock);
+        modFx.prepare (sr, maxBlock); delayFx.prepare (sr, maxBlock); reverb.prepare (sr, maxBlock);
         namLat = std::abs (sr - 48000.0) > 1 ? NamSlot::prefill : 0;
         osLat = (int) std::ceil (oversampler.getLatencyInSamples());
         padPedal.prepare (namLat + 4); padAmp.prepare (juce::jmax (osLat, namLat) + 4);
@@ -248,46 +247,9 @@ private:
         // ---- stereo: modulation, delay, level, pan ----
         auto* L = work.getWritePointer (0); auto* R = work.getWritePointer (1);
         for (int i = 0; i < n; ++i) L[i] = R[i] = x[i];
-        if (p.modOn && p.modType == 1)
-        {
-            chorus.setRate (0.2f + p.modRate * 3.0f); chorus.setDepth (p.modDepth); chorus.setMix (0.5f);
-            juce::dsp::AudioBlock<float> sb (work); auto s = sb.getSubBlock (0, (size_t) n);
-            chorus.process (juce::dsp::ProcessContextReplacing<float> (s));
-        }
-        else if (p.modOn && p.modType == 2)          // vibrato: pitch wobble
-        {
-            const float rate = 2.0f + p.modRate * 6.0f, depth = (float) sampleRate * (0.0005f + p.modDepth * 0.003f);
-            for (int i = 0; i < n; ++i)
-            {
-                lfo += rate / (float) sampleRate; if (lfo > 1) lfo -= 1;
-                vib.pushSample (0, L[i]);
-                L[i] = R[i] = vib.popSample (0, depth * (1.0f + std::sin (juce::MathConstants<float>::twoPi * lfo)) + 2.0f);
-            }
-        }
-        else if (p.modOn && p.modType == 3)          // tremolo (amp-style)
-        {
-            const float rate = 1.5f + p.modRate * 8.0f;
-            for (int i = 0; i < n; ++i)
-            {
-                lfo += rate / (float) sampleRate; if (lfo > 1) lfo -= 1;
-                const float g = 1.0f - p.modDepth * 0.9f * (0.5f + 0.5f * std::sin (juce::MathConstants<float>::twoPi * lfo));
-                L[i] *= g; R[i] *= g;
-            }
-        }
-        if (p.dlyOn && p.dlyMix > 0.001f)
-        {
-            static const float divs[] = { 1.0f, 0.75f, 0.5f, 2.0f / 3.0f, 2.0f, 0.25f };
-            const float q = (float) (60.0 / juce::jmax (30.0, p.bpm)) * divs[juce::jlimit (0, 5, p.dlyDiv)];
-            const float dS = juce::jlimit (1.0f, (float) sampleRate * 2.9f, q * (float) sampleRate);
-            if (std::abs (p.dlyTone - lastDlyTone) > 0.005f){ lastDlyTone = p.dlyTone; dlyLpL.coefficients = dlyLpR.coefficients = Coefs::makeLowPass (sampleRate, 1500.0f + p.dlyTone * 9000.0f); }
-            for (int i = 0; i < n; ++i)
-            {
-                const float eL = dlyL.popSample (0, dS), eR = dlyR.popSample (0, dS * 1.012f);
-                dlyL.pushSample (0, L[i] + dlyLpL.processSample (eR) * p.dlyFb);      // gentle ping-pong
-                dlyR.pushSample (0, R[i] + dlyLpR.processSample (eL) * p.dlyFb);
-                L[i] += eL * p.dlyMix; R[i] += eR * p.dlyMix;
-            }
-        }
+        if (p.modOn) modFx.process (L, R, n, p.modType, p.modRate, p.modDepth);
+        if (p.dlyOn && p.dlyMix > 0.001f) delayFx.process (L, R, n, p.dlyType, p.dlyMix, p.dlyFb, p.dlyTone, p.dlyDiv, p.bpm);
+        if (p.revOn) reverb.process (L, R, n, p.revMix, p.revTone, p.revDwell);
         const float gl = p.level * std::cos ((p.pan + 1) * juce::MathConstants<float>::pi / 4) * 1.414f;
         const float gr = p.level * std::sin ((p.pan + 1) * juce::MathConstants<float>::pi / 4) * 1.414f;
         for (int i = 0; i < n; ++i) { outL[i] = L[i] * gl; outR[i] = R[i] * gr; }
@@ -342,15 +304,15 @@ private:
 
     double sampleRate = 48000; int blockSize = 512;
     juce::dsp::Oversampling<float> oversampler { 1, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, true };
-    Filter preHp, interLp, coupling, odHp, odLp, odTilt, bassF, midF, trebleF, presF, mic1, mic2, mic3, dlyLpL, dlyLpR;
+    Filter preHp, interLp, coupling, odHp, odLp, odTilt, bassF, midF, trebleF, presF, mic1, mic2, mic3;
     juce::dsp::Compressor<float> comp;
+    ModFx modFx; DelayFx delayFx;
     juce::dsp::Convolution cabConv;
-    juce::dsp::Chorus<float> chorus;
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> vib, dlyL, dlyR, early;
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> early;
     juce::AudioBuffer<float> mono1, dryBuf, work;
     std::atomic<bool> hasCab { false };
     Pad padPedal, padAmp; int osLat = 0, namLat = 0;
-    double lastKey = -1; float gateEnv = 0, gateGain = 0, sag = 0, lfo = 0, lastDlyTone = -1; int lastAmp = -1, lastMic = -1;
+    double lastKey = -1; float gateEnv = 0, gateGain = 0, sag = 0; int lastAmp = -1, lastMic = -1;
 };
 
 } // namespace jw

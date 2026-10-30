@@ -23,6 +23,13 @@ przesterów (Tube Screamer, Klon, SD-1, DS-1, HM-2…). To profile Neural Amp Mo
 Własne profile .nam (np. z tone3000.com) wrzuć do Dokumenty\Jesienna Warszawa\NAM (kostki: podfolder Kostki)
 i otwórz wtyczkę ponownie – pojawią się na końcu listy, głośność wyrówna się sama.
 
+EFEKTY
+Modulacja: chorus (jak Boss CE-2), wibrato (jak Magnatone), tremolo optyczne (jak Fender Deluxe),
+tremolo harmoniczne (Brownface), Uni-Vibe. Delay: taśmowe echo (jak Space Echo), analogowy (jak Memory Man),
+cyfrowy ping-pong – zawsze w tempie projektu. To modele: efektów ruchomych w czasie nie da się nagrać jako IR/NAM.
+Pogłos: prawdziwe nagrania sprężyn (Fisher K-10, sprężyna wzmacniacza, HG), płyty i kilku sal.
+"Siła" to dwell – jak mocno uderzasz w sprężyny.
+
 DANE
 IR-y kolumn, przestrzenie i sample zespołu są w C:\ProgramData\Jesienna Warszawa.
 Licencje dźwięków: plik LICENCJE.md w tym folderze; profile NAM: nam\ZRODLO.md (GPL v3). Kod wtyczki: AGPL v3 (LICENSE.txt).
