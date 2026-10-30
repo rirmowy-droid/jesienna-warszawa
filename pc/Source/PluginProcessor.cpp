@@ -220,7 +220,7 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
     const float gs = pf ("gtrSpace"), bs = pf ("bandSpace"), sm = pf ("spaceMix");
     for (int c = 0; c < 2; ++c)
     {
-        send.copyFrom (c, 0, gtr, c, 0, n, gs); send.addFrom (c, 0, bnd, c, 0, n, bs);
+        send.clear (c, 0, n); send.addFrom (c, 0, gtr, c, 0, n, gs); send.addFrom (c, 0, bnd, c, 0, n, bs);
     }
     {
         dsp::AudioBlock<float> blk (send.getArrayOfWritePointers(), 2, (size_t) n);
