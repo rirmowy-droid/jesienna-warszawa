@@ -291,6 +291,18 @@ void Look::drawButtonBackground (Graphics& g, Button& b, const Colour&, bool hl,
     if (down) { g.setColour (Colours::black.withAlpha (0.15f)); g.fillRect (r); }
 }
 
+void Look::drawLabel (Graphics& g, Label& l)
+{
+    if (! (bool) l.getProperties()["halo"]) { LookAndFeel_V4::drawLabel (g, l); return; }
+    g.setFont (l.getFont());
+    auto r = l.getLocalBounds();
+    g.setColour (Colours::black.withAlpha (0.85f));
+    for (auto o : { Point<int> (-1, 0), Point<int> (1, 0), Point<int> (0, -1), Point<int> (0, 1), Point<int> (1, 1), Point<int> (2, 2) })
+        g.drawFittedText (l.getText(), r.translated (o.x, o.y), l.getJustificationType(), 1);
+    g.setColour (Colour (0xfff6e8c4));
+    g.drawFittedText (l.getText(), r, l.getJustificationType(), 1);
+}
+
 void Look::drawButtonText (Graphics& g, TextButton& b, bool, bool)
 {
     const bool on = b.getToggleState();
@@ -344,6 +356,7 @@ Pedal::Pedal (APVTS& s, const String& t, Colour c, const String& switchId, const
     for (auto& [id, cap] : ks)
     {
         auto* k = knobs.add (new Knob (s, id, cap, "pedal"));
+        k->label.getProperties().set ("halo", true);
         k->setCaptionColour (Colours::white.withAlpha (0.9f));
         addAndMakeVisible (k);
     }
@@ -354,6 +367,30 @@ void Pedal::paint (Graphics& g)
     auto r = getLocalBounds().toFloat().reduced (4);
     // shadow + enclosure
     g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (r.translated (3, 5), 12);
+    // the face is a painted panel chosen for the effect; a gold frame lies over it
+    struct Art { const char* key; int deco, sec, frameDeco, frameSec; };
+    static const Art arts[] = { { "Wej", 0, 8, 0, 19 }, { "Prze", 1, 11, 5, 23 }, { "Modul", 3, 2, 6, 15 }, { "Delay", 6, 7, 18, 9 }, { "Pog", 7, 9, 2, 11 } };
+    const Art* art = nullptr; for (auto& x : arts) if (title.contains (U (x.key))) art = &x;
+    const Image face = art != nullptr ? ui::art (deco() ? String::formatted ("pan_d%02d.jpg", art->deco) : String::formatted ("pan_s%02d.jpg", art->sec)) : Image();
+    const float corner = deco() ? 8.0f : 14.0f;
+    if (face.isValid())
+    {
+        {
+            Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (r, corner); g.reduceClipRegion (clip);
+            g.setOpacity (1.0f); g.setImageResamplingQuality (Graphics::highResamplingQuality);
+            // the upper half of the picture (sun, moon, face) stays visible; controls sit on a darkened band
+            g.drawImage (face, r, RectanglePlacement::xMid | RectanglePlacement::yTop | RectanglePlacement::fillDestination);
+            g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.62f), r.getX(), r.getY(), Colours::black.withAlpha (0.0f), r.getX(), r.getY() + r.getHeight() * 0.62f, false));
+            g.fillRect (r);
+            g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.0f), r.getX(), r.getBottom() - r.getHeight() * 0.42f, Colours::black.withAlpha (0.45f), r.getX(), r.getBottom(), false));
+            g.fillRect (r);
+            g.setColour (body.withAlpha (0.16f)); g.fillRect (r);       // a hint of the effect's own colour
+        }
+        const Image frame = ui::art (String::formatted ("frame%02d.png", deco() ? art->frameDeco : art->frameSec));
+        if (frame.isValid()) { g.setOpacity (1.0f); g.drawImage (frame, r.reduced (1), RectanglePlacement::stretchToFit); }
+        g.setColour (Colours::black.withAlpha (0.7f)); g.drawRoundedRectangle (r, corner, 1.5f);
+    }
+    else
     if (deco())
     {   // black lacquer case, the effect's colour as an inlaid panel, gold fan behind the name
         g.setGradientFill (ColourGradient (Colour (0xff2a2622), r.getX(), r.getY(), Colour (0xff070606), r.getRight(), r.getBottom(), false));
@@ -421,6 +458,9 @@ void Pedal::paint (Graphics& g)
     const bool light = body.getPerceivedBrightness() > 0.6f;
     g.setColour (light ? Colour (0xff1a1410) : Colours::white.withAlpha (0.92f));
     g.setFont (FontOptions (serifName(), 17.0f, Font::bold | Font::italic));
+    for (auto o : { Point<int> (-1, 0), Point<int> (1, 0), Point<int> (0, -1), Point<int> (0, 1), Point<int> (1, 1) })
+    { g.setColour (Colours::black.withAlpha (0.75f)); g.drawFittedText (title, nameArea.toNearestInt().translated (o.x, o.y), Justification::centred, 1); }
+    g.setColour (Colour (0xfff4e2b0));
     g.drawFittedText (title, nameArea.toNearestInt(), Justification::centred, 1);
 }
 
@@ -519,6 +559,19 @@ void AmpHead::paint (Graphics& g)
         for (float y = grille.getY(); y < grille.getBottom(); y += 4) { g.setColour (Colours::white.withAlpha (0.05f)); g.drawHorizontalLine ((int) y, grille.getX(), grille.getRight()); }
     }
     g.setColour (Colours::black.withAlpha (0.5f)); g.drawRoundedRectangle (grille, 6, 1.0f);
+    // a painted gold-inlaid plate over the grille: each amp gets its own, in the studio's style
+    static const int decoPlates[] = { 0, 1, 7, 9, 10, 13, 15, 16, 4, 12 };
+    static const int secPlates[]  = { 2, 11, 8, 17, 14, 5, 3, 6 };
+    const int ampIdx = jmax (0, model.getSelectedItemIndex());
+    const Image grillePlate = art (String::formatted ("plate%02d.jpg", deco() ? decoPlates[ampIdx % 10] : secPlates[ampIdx % 8]));
+    if (grillePlate.isValid())
+    {
+        Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (grille, 6); g.reduceClipRegion (clip);
+        g.setOpacity (1.0f); g.setImageResamplingQuality (Graphics::highResamplingQuality);
+        g.drawImage (grillePlate, grille, RectanglePlacement::centred | RectanglePlacement::fillDestination);
+        g.setColour (Colours::black.withAlpha (0.18f)); g.fillRect (grille);
+    }
+    else
     {   // the grille cloth carries the studio's pattern, woven in gold thread
         Graphics::ScopedSaveState ss (g); g.reduceClipRegion (grille.reduced (2).toNearestInt());
         if (deco()) { decoFan (g, { grille.getX() + 40, grille.getBottom() }, grille.getHeight() * 0.9f, -0.2f, 1.5f, 12, col::amber.withAlpha (0.22f), 1.1f);
@@ -854,7 +907,18 @@ void SpacePage::paint (Graphics& g)
         auto f = r.toFloat();
         g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (f.translated (3, 5), 6);
         frosted (g, f, deco() ? 3.0f : 12.0f, this);
-        g.setGradientFill (ColourGradient (col::panel2.withAlpha (0.62f), f.getX(), f.getY(), col::panel.darker (0.4f).withAlpha (0.74f), f.getX(), f.getBottom(), false));
+        {   // painted faceplate
+            const int which = r == r1 ? 0 : (r == r2 ? 1 : 2);
+            static const int decoP[] = { 3, 12, 0 }, secP[] = { 17, 11, 14 };
+            const Image plate = art (String::formatted ("plate%02d.jpg", deco() ? decoP[which] : secP[which]));
+            if (plate.isValid())
+            {
+                Graphics::ScopedSaveState ss (g); g.reduceClipRegion (f.reduced (30, 0).toNearestInt());
+                g.setOpacity (1.0f); g.drawImage (plate, f.reduced (30, 0), RectanglePlacement::stretchToFit);
+                g.setColour (Colours::black.withAlpha (0.25f)); g.fillRect (f);
+            }
+        }
+        g.setGradientFill (ColourGradient (col::panel2.withAlpha (0.45f), f.getX(), f.getY(), col::panel.darker (0.4f).withAlpha (0.62f), f.getX(), f.getBottom(), false));
         g.fillRoundedRectangle (f, deco() ? 3.0f : 12.0f);
         for (float y = f.getY() + 3; y < f.getBottom() - 3; y += 2) { g.setColour (Colours::white.withAlpha (0.02f)); g.drawHorizontalLine ((int) y, f.getX() + 40, f.getRight() - 40); }
         // rack ears with holes
