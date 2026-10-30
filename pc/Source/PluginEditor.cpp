@@ -30,7 +30,9 @@ static String serifName()
 }
 
 // ======================= look & feel =======================
-Look::Look()
+Look::Look() { refreshColours(); }
+
+void Look::refreshColours()
 {
     setColour (ResizableWindow::backgroundColourId, col::bg);
     setColour (Label::textColourId, col::text.withAlpha (0.85f));
@@ -38,7 +40,7 @@ Look::Look()
     setColour (ComboBox::outlineColourId, col::line);
     setColour (ComboBox::textColourId, col::text);
     setColour (ComboBox::arrowColourId, col::amber);
-    setColour (PopupMenu::backgroundColourId, Colour (0xff1e1814));
+    setColour (PopupMenu::backgroundColourId, col::panel.darker (0.2f));
     setColour (PopupMenu::highlightedBackgroundColourId, col::amber.withAlpha (0.3f));
     setColour (PopupMenu::textColourId, col::text);
     setColour (PopupMenu::highlightedTextColourId, Colours::white);
@@ -46,7 +48,7 @@ Look::Look()
     setColour (TextButton::buttonOnColourId, col::amber);
     setColour (TextButton::textColourOffId, col::dim);
     setColour (TextButton::textColourOnId, Colour (0xff1a1410));
-    setColour (BubbleComponent::backgroundColourId, Colour (0xf0201a16));
+    setColour (BubbleComponent::backgroundColourId, col::panel.withAlpha (0.95f));
     setColour (BubbleComponent::outlineColourId, col::amber);
     setColour (TooltipWindow::textColourId, col::text);
 }
@@ -136,17 +138,35 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
         pointer (k.getWidth() * (L.id == "brit" ? 0.3f : 0.1f), k.getWidth() * 0.5f, 2.2f, L.id == "brit" ? Colour (0xff111111) : (L.id == "lofi" ? Colour (0xff4a3a2a) : Colours::white));
         return;
     }
-    // default / rack: amber arc
+    // default knob, in the studio's style
     auto k = c.reduced (d * 0.14f);
     Path bgArc; bgArc.addCentredArc (cx, cy, d * 0.46f, d * 0.46f, 0, a0, a1, true);
-    g.setColour (Colour (0xff3a2f28)); g.strokePath (bgArc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour (col::ink.withAlpha (0.7f)); g.strokePath (bgArc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
     Path arc; arc.addCentredArc (cx, cy, d * 0.46f, d * 0.46f, 0, a0, ang, true);
-    g.setColour (col::amber); g.strokePath (arc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour (deco() ? col::accent2.brighter (0.2f) : col::amber); g.strokePath (arc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
     knobShadow (g, k);
-    g.setGradientFill (ColourGradient (Colour (0xff3b302a), k.getX(), k.getY(), Colour (0xff1a1512), k.getRight(), k.getBottom(), false));
-    g.fillEllipse (k);
-    g.setColour (col::line); g.drawEllipse (k, 1.0f);
-    pointer (d * 0.08f, d * 0.34f, 2.5f, Colour (0xfff2e6d8));
+    if (deco())
+    {   // black lacquer with a gold ring and fluted edge
+        g.setGradientFill (ColourGradient (Colour (0xff3a3632), k.getX(), k.getY(), Colour (0xff060505), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
+        for (int i = 0; i < 20; ++i) { const float a = i * MathConstants<float>::twoPi / 20; g.setColour (col::amber.withAlpha (0.35f));
+            g.drawLine (cx + std::sin (a) * k.getWidth() * 0.42f, cy - std::cos (a) * k.getWidth() * 0.42f, cx + std::sin (a) * k.getWidth() * 0.5f, cy - std::cos (a) * k.getWidth() * 0.5f, 1.0f); }
+        g.setColour (col::amber); g.drawEllipse (k.reduced (k.getWidth() * 0.08f), 1.2f);
+        pointer (d * 0.06f, d * 0.33f, 2.5f, col::amber.brighter (0.3f));
+    }
+    else
+    {   // brass knob with an engraved leaf on the cap
+        g.setGradientFill (ColourGradient (Colour (0xfff0d58a), k.getX(), k.getY(), Colour (0xff6e4e1e), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
+        auto cap = k.reduced (k.getWidth() * 0.16f);
+        g.setGradientFill (ColourGradient (Colour (0xff3a5a34), cap.getX(), cap.getY(), Colour (0xff142312), cap.getRight(), cap.getBottom(), false));
+        g.fillEllipse (cap);
+        g.setColour (Colour (0xff2a1c0c).withAlpha (0.6f)); g.drawEllipse (k, 1.0f);
+        Path leaf; const float L = cap.getWidth() * 0.32f;
+        leaf.startNewSubPath (0, -L); leaf.quadraticTo (L * 0.45f, 0, 0, L * 0.6f); leaf.quadraticTo (-L * 0.45f, 0, 0, -L); leaf.closeSubPath();
+        g.setColour (col::amber.withAlpha (0.35f)); g.fillPath (leaf, AffineTransform::translation (cx, cy));
+        pointer (d * 0.06f, d * 0.35f, 2.5f, Colour (0xfff5e3b0));
+    }
 }
 
 void Look::drawToggleButton (Graphics& g, ToggleButton& b, bool hl, bool down)
@@ -282,13 +302,32 @@ void Pedal::paint (Graphics& g)
     auto r = getLocalBounds().toFloat().reduced (4);
     // shadow + enclosure
     g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (r.translated (3, 5), 12);
-    g.setGradientFill (ColourGradient (body.brighter (0.25f), r.getX(), r.getY(), body.darker (0.45f), r.getRight(), r.getBottom(), false));
-    g.fillRoundedRectangle (r, 12);
-    g.setColour (Colours::white.withAlpha (0.18f)); g.drawRoundedRectangle (r.reduced (1.5f), 11, 1.2f);
-    g.setColour (Colours::black.withAlpha (0.35f)); g.drawRoundedRectangle (r, 12, 1.0f);
+    if (deco())
+    {   // black lacquer case, the effect's colour as an inlaid panel, gold fan behind the name
+        g.setGradientFill (ColourGradient (Colour (0xff2a2622), r.getX(), r.getY(), Colour (0xff070606), r.getRight(), r.getBottom(), false));
+        g.fillRoundedRectangle (r, 8);
+        auto inlay = r.reduced (9).withTrimmedTop (r.getHeight() * 0.52f).withTrimmedBottom (2);
+        g.setGradientFill (ColourGradient (body.brighter (0.15f), inlay.getX(), inlay.getY(), body.darker (0.55f), inlay.getRight(), inlay.getBottom(), false));
+        g.fillRect (inlay);
+        { Graphics::ScopedSaveState ss (g); g.reduceClipRegion (inlay.toNearestInt());
+          decoFan (g, { inlay.getCentreX(), inlay.getBottom() + 4 }, inlay.getHeight() * 0.9f, -1.25f, 1.25f, 14, Colours::black.withAlpha (0.28f), 1.2f); }
+        decoFrame (g, r.reduced (3), col::amber.withAlpha (0.85f), 8);
+        g.setColour (col::amber.withAlpha (0.8f)); g.drawRect (inlay, 1.0f);
+    }
+    else
+    {   // enamelled case with gold edging and vines in the corners
+        g.setGradientFill (ColourGradient (body.brighter (0.3f), r.getX(), r.getY(), body.darker (0.5f), r.getRight(), r.getBottom(), false));
+        g.fillRoundedRectangle (r, 14);
+        {
+            Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (r, 14); g.reduceClipRegion (clip);
+            Random rnd (title.hashCode());   // enamel mottling
+            for (int i = 0; i < 70; ++i) { g.setColour ((rnd.nextBool() ? Colours::white : Colours::black).withAlpha (0.05f)); g.fillEllipse (r.getX() + rnd.nextFloat() * r.getWidth(), r.getY() + rnd.nextFloat() * r.getHeight(), 6 + rnd.nextFloat() * 18, 4 + rnd.nextFloat() * 10); }
+        }
+        nouveauFrame (g, r.reduced (3), Colour (0xffe2c06a), body.darker (0.4f).withSaturation (0.5f), 30);
+    }
     // screws
     for (auto p : { r.getTopLeft() + Point<float> (10, 10), r.getTopRight() + Point<float> (-10, 10), r.getBottomLeft() + Point<float> (10, -10), r.getBottomRight() + Point<float> (-10, -10) })
-    { g.setColour (Colour (0xff9a9a9a)); g.fillEllipse (Rectangle<float> (6, 6).withCentre (p)); g.setColour (Colour (0xff444444)); g.drawLine (p.x - 2, p.y, p.x + 2, p.y, 1.0f); }
+    { g.setColour (deco() ? col::amber : Colour (0xffc9a24a)); g.fillEllipse (Rectangle<float> (5, 5).withCentre (p)); }
     // side jacks
     g.setColour (Colour (0xff2a2a2a));
     g.fillRect (Rectangle<float> (6, 16).withCentre ({ r.getX() - 1, r.getY() + 46 }));
@@ -416,6 +455,13 @@ void AmpHead::paint (Graphics& g)
     g.setGradientFill (ColourGradient (L.accent.brighter (0.6f), jewel.getX(), jewel.getY(), L.accent.darker (0.4f), jewel.getRight(), jewel.getBottom(), false));
     g.fillEllipse (jewel);
     g.setColour (Colours::white.withAlpha (0.5f)); g.fillEllipse (jewel.reduced (6).translated (-2, -2));
+    // the studio's own touch: gold inlay with a fan (Art Deco) or vines in the corners (Secession)
+    if (deco())
+    {
+        decoFrame (g, r.reduced (4), col::amber.withAlpha (0.75f), 10);
+        decoFan (g, { grille.getCentreX(), grille.getBottom() - 2 }, grille.getHeight() * 0.42f, -1.35f, 1.35f, 18, col::amber.withAlpha (0.28f), 1.0f);
+    }
+    else nouveauFrame (g, r.reduced (4), Colour (0xffe2c06a), Colour (0xff4f7a45), 46);
 }
 
 void AmpHead::resized()
@@ -439,77 +485,38 @@ Cabinet::Cabinet (JesiennaProcessor& p) : proc (p), cab (p.apvts, "cab"), mic (p
 
 void Cabinet::paint (Graphics& g)
 {
-    const auto& L = ampLook (lookId);
     const String name = cab.getText();
-    int speakers = 1; float size = 1.0f;
-    if (name.contains (U ("4×12"))) speakers = 4; else if (name.contains (U ("2×12"))) speakers = 2; else if (name.contains (U ("1×8"))) size = 0.7f;
     const bool none = cab.getSelectedItemIndex() == 0;
     auto area = box;
+    card (g, getLocalBounds().toFloat().reduced (2), {}, 0.55f);
     if (none)
     {
         g.setColour (col::dim); g.setFont (FontOptions (15.0f));
         g.drawFittedText (U ("Bez kolumny – sygnał prosto ze wzmacniacza (DI)"), area.toNearestInt(), Justification::centred, 2);
         return;
     }
-    auto body = area.withSizeKeepingCentre (area.getWidth() * (speakers == 4 ? 0.82f : 0.86f) * (size < 1 ? 0.72f : 1.0f), area.getHeight() * (speakers == 4 ? 0.98f : 0.78f) * (size < 1 ? 0.72f : 1.0f));
-    g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (body.translated (4, 6), 10);
-    g.setColour (L.tolex); g.fillRoundedRectangle (body, 10);
-    if (L.tweedCloth)
-    {
-        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (body.toNearestInt());
-        for (float x = body.getX() - body.getHeight(); x < body.getRight(); x += 5) { g.setColour (Colour (0xff8a6a3a).withAlpha (0.45f)); g.drawLine (x, body.getBottom(), x + body.getHeight(), body.getY(), 1.4f); }
-    }
-    auto grille = body.reduced (14);
-    g.setColour (L.grille); g.fillRoundedRectangle (grille, 6);
-    // speakers seen through the cloth
-    std::vector<Point<float>> centres;
-    if (speakers == 4) { for (int i = 0; i < 4; ++i) centres.push_back ({ grille.getX() + grille.getWidth() * (i % 2 ? 0.73f : 0.27f), grille.getY() + grille.getHeight() * (i / 2 ? 0.73f : 0.27f) }); }
-    else if (speakers == 2) { centres = { { grille.getX() + grille.getWidth() * 0.27f, grille.getCentreY() }, { grille.getX() + grille.getWidth() * 0.73f, grille.getCentreY() } }; }
-    else centres = { grille.getCentre() };
-    const float sr = jmin (grille.getWidth() / (speakers == 1 ? 2.4f : 4.4f), grille.getHeight() / (speakers == 4 ? 4.4f : 2.4f));
-    for (auto c : centres)
-    {
-        g.setColour (Colours::black.withAlpha (0.28f)); g.fillEllipse (Rectangle<float> (sr * 2, sr * 2).withCentre (c));
-        g.setColour (Colours::black.withAlpha (0.22f)); g.fillEllipse (Rectangle<float> (sr * 0.7f, sr * 0.7f).withCentre (c));
-    }
-    {
-        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (grille.toNearestInt());
-        for (float x = grille.getX(); x < grille.getRight(); x += 3) { g.setColour (Colours::black.withAlpha (0.08f)); g.drawVerticalLine ((int) x, grille.getY(), grille.getBottom()); }
-        for (float y = grille.getY(); y < grille.getBottom(); y += 3) { g.setColour (Colours::white.withAlpha (0.05f)); g.drawHorizontalLine ((int) y, grille.getX(), grille.getRight()); }
-    }
-    g.setColour (Colours::black.withAlpha (0.6f)); g.drawRoundedRectangle (body, 10, 1.5f);
+    // painted cabinet in the studio's style; which one depends on the speaker layout
+    String file;
+    const bool d = deco();
+    if (name.contains (U ("4×12")))      file = d ? "deco_kol_4x12.png" : "sec_kol_lilie.png";
+    else if (name.contains (U ("2×12"))) file = d ? "deco_kol_slonce.png" : "sec_kol_dama.png";
+    else if (name.contains (U ("1×8")))  file = d ? "deco_kol_waska.png" : "sec_kol_roze.png";
+    else                                 file = d ? "deco_kol_wachlarz.png" : "sec_kol_paw.png";
+    auto cabBox = area.reduced (14, 8);
+    g.setColour (Colours::black.withAlpha (0.35f)); g.fillEllipse (cabBox.withTrimmedTop (cabBox.getHeight() - 16).translated (0, 6));
+    drawSprite (g, file, cabBox);
 
-    // the microphone in front of the first speaker
+    // the microphone in front of the cabinet
     const int m = mic.getSelectedItemIndex();
-    if (m <= 0 || centres.empty()) return;
-    auto c = centres.front();
+    if (m <= 0) return;
+    static const char* mics[] = { "", "dynamiczny", "wstegowy", "pojemnosciowy", "daleki" };
+    const String micFile = String (d ? "deco_mik_" : "sec_mik_") + mics[jlimit (0, 4, m)] + ".png";
     const bool far = m == 4;
-    const float s = far ? 0.6f : 1.0f;
-    Point<float> head = far ? Point<float> (body.getRight() + 26, body.getY() + 30) : c.translated (sr * 0.2f, 0);
-    g.setColour (Colour (0xff1c1c1c));   // stand / boom
-    g.drawLine (head.x + 40 * s, head.y + 10 * s, head.x + 120 * s, head.y + 70 * s, 4.0f * s);
-    if (m == 1)        // dynamic: slim cylinder with a grille tip, angled at the cone
-    {
-        Path p; p.addRoundedRectangle (0, -7 * s, 70 * s, 14 * s, 6 * s);
-        g.setColour (Colour (0xff2a2a2a)); g.fillPath (p, AffineTransform::rotation (0.55f).translated (head));
-        Path tip; tip.addRoundedRectangle (-14 * s, -9 * s, 18 * s, 18 * s, 7 * s);
-        g.setColour (Colour (0xffb8b8b8)); g.fillPath (tip, AffineTransform::rotation (0.55f).translated (head));
-    }
-    else if (m == 2)   // ribbon: rounded grille box
-    {
-        auto rr = Rectangle<float> (34 * s, 54 * s).withCentre (head);
-        g.setColour (Colour (0xff3a3632)); g.fillRoundedRectangle (rr, 12 * s);
-        for (float y = rr.getY() + 6 * s; y < rr.getBottom() - 6 * s; y += 4 * s) { g.setColour (Colour (0xffb9b1a4).withAlpha (0.6f)); g.drawHorizontalLine ((int) y, rr.getX() + 5 * s, rr.getRight() - 5 * s); }
-        g.setColour (Colour (0xffd0c8b8)); g.drawRoundedRectangle (rr, 12 * s, 1.5f);
-    }
-    else               // condenser (large diaphragm) or the distant room mic
-    {
-        auto rr = Rectangle<float> (30 * s, 70 * s).withCentre (head);
-        g.setColour (Colour (0xffc6c2b8)); g.fillRoundedRectangle (rr, 14 * s);
-        auto cap = rr.withHeight (rr.getHeight() * 0.48f);
-        g.setColour (Colour (0xff8e8a82)); g.fillRoundedRectangle (cap.reduced (3 * s), 12 * s);
-        for (float y = cap.getY() + 6 * s; y < cap.getBottom() - 4 * s; y += 3.5f * s) { g.setColour (Colours::black.withAlpha (0.18f)); g.drawHorizontalLine ((int) y, cap.getX() + 5 * s, cap.getRight() - 5 * s); }
-    }
+    const float h = cabBox.getHeight() * (far ? 0.42f : 0.62f);
+    auto mb = far ? Rectangle<float> (h * 0.5f, h).withPosition (cabBox.getRight() - h * 0.42f, cabBox.getY() - 2)
+                  : Rectangle<float> (h * 0.55f, h).withCentre ({ cabBox.getX() + cabBox.getWidth() * 0.3f, cabBox.getBottom() - h * 0.45f });
+    g.setColour (Colours::black.withAlpha (0.3f)); g.fillEllipse (mb.withTrimmedTop (mb.getHeight() - 10).translated (4, 4));
+    drawSprite (g, micFile, mb);
 }
 
 void Cabinet::resized()
@@ -561,14 +568,19 @@ RigPage::RigPage (JesiennaProcessor& p)
 
 void RigPage::paint (Graphics& g)
 {
+    // the studio behind everything
+    backdrop (g, getLocalBounds(), deco() ? "deco_wzmacniacze.jpg" : "secesja_sala.jpg", deco() ? 0.22f : 0.2f, 0.5f, 0.55f, this);
     // pedalboard
     auto board = Rectangle<float> (12, 8, (float) getWidth() - 24, 284);
-    g.setGradientFill (ColourGradient (Colour (0xff2a2420), board.getX(), board.getY(), Colour (0xff161210), board.getX(), board.getBottom(), false));
-    g.fillRoundedRectangle (board, 12);
-    for (float y = board.getY() + 30; y < board.getBottom(); y += 54) { g.setColour (Colours::black.withAlpha (0.35f)); g.fillRect (board.getX() + 10, y, board.getWidth() - 20, 6.0f); }
-    g.setColour (col::line); g.drawRoundedRectangle (board, 12, 1.0f);
+    g.setColour (Colours::black.withAlpha (0.4f)); g.fillRoundedRectangle (board.translated (0, 5), 12);
+    frosted (g, board, deco() ? 4.0f : 14.0f, this);
+    g.setGradientFill (ColourGradient (col::panel.withAlpha (0.62f), board.getX(), board.getY(), col::bg.withAlpha (0.75f), board.getX(), board.getBottom(), false));
+    g.fillRoundedRectangle (board, deco() ? 4.0f : 14.0f);
+    for (float y = board.getY() + 30; y < board.getBottom(); y += 54) { g.setColour (Colours::black.withAlpha (0.3f)); g.fillRect (board.getX() + 10, y, board.getWidth() - 20, 6.0f); }
+    if (deco()) decoFrame (g, board.reduced (2), col::amber.withAlpha (0.7f), 12);
+    else nouveauFrame (g, board.reduced (2), col::amber, col::accent2, 40);
     g.setColour (col::dim); g.setFont (FontOptions (11.0f, Font::bold));
-    g.drawText (U ("GITARA"), Rectangle<int> (18, 11, 60, 14), Justification::left);
+    g.drawText (U ("GITARA"), Rectangle<int> (deco() ? 22 : 62, 12, 60, 14), Justification::left);
 
     // patch cables: guitar → pedals → amp → cabinet
     auto cable = [&] (Point<float> a, Point<float> b, float sag)
@@ -598,10 +610,9 @@ void RigPage::paint (Graphics& g)
 
     // output strip
     auto strip = Rectangle<float> ((float) level.getX() - 8, (float) inCh.getY() - 30, (float) level.getWidth() + 16, (float) space.getBottom() - inCh.getY() + 40);
-    g.setColour (col::panel); g.fillRoundedRectangle (strip, 10);
-    g.setColour (col::line); g.drawRoundedRectangle (strip, 10, 1.0f);
+    card (g, strip, {}, 0.86f, this);
     g.setColour (col::amber); g.setFont (FontOptions (12.0f, Font::bold));
-    g.drawText (U ("WEJŚCIE / MIKS"), strip.withHeight (26).toNearestInt(), Justification::centred);
+    g.drawText (U ("WEJŚCIE / MIKS"), strip.withHeight (26).translated (0, 6).toNearestInt(), Justification::centred);
 }
 
 void RigPage::resized()
@@ -633,6 +644,7 @@ BandPage::BandPage (JesiennaProcessor& p)
       level (p.apvts, "bandLevel", U ("Zespół")), space (p.apvts, "bandSpace", U ("Przestrzeń"))
 {
     for (auto* c : std::initializer_list<Component*> { &on, &sync, &song, &key, &style, &keysInst, &tempo, &energy, &swing, &drums, &bass, &keys, &level, &space }) addAndMakeVisible (c);
+    keysInst.onChange = [this] { repaint(); };
     timerCallback();   // chord chart filled straight away
     startTimerHz (15);
 }
@@ -664,16 +676,19 @@ static String chordLabel (const jw::Chord& c)
 
 void BandPage::paint (Graphics& g)
 {
-    auto card = [&] (Rectangle<int> r, const String& t)
-    {
-        g.setColour (col::panel); g.fillRoundedRectangle (r.toFloat(), 10);
-        g.setColour (col::line); g.drawRoundedRectangle (r.toFloat(), 10, 1.0f);
-        g.setColour (col::amber); g.setFont (FontOptions (12.0f, Font::bold));
-        g.drawText (upperPl (t), r.reduced (14, 8).removeFromTop (16), Justification::left);
-    };
-    card ({ 12, 8, 330, 330 }, U ("Utwór"));
-    card (chart.expanded (10, 34).withTrimmedBottom (24), U ("Akordy (bieżący podświetlony)"));
-    card ({ 12, 350, getWidth() - 24, getHeight() - 360 }, U ("Scena"));
+    backdrop (g, getLocalBounds(), deco() ? "deco_studio.jpg" : "secesja_sala.jpg", 0.24f, 0.5f, 0.5f, this);
+    card (g, Rectangle<int> (12, 8, 330, 330).toFloat(), upperPl (U ("Utwór")), 0.84f, this);
+    card (g, chart.expanded (10, 34).withTrimmedBottom (24).toFloat(), upperPl (U ("Akordy (bieżący podświetlony)")), 0.84f, this);
+    card (g, Rectangle<int> (12, 350, getWidth() - 24, getHeight() - 360).toFloat(), upperPl (U ("Scena")), 0.7f, this);
+    {   // a framed picture on the wall: the jazz club poster (Art Deco) or Mucha's "Autumn", 1896 (Secession)
+        auto frame = Rectangle<float> ((float) getWidth() - 186, 8, 174, 330);
+        g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (frame.translated (3, 5), deco() ? 2.0f : 10.0f);
+        g.setColour (deco() ? Colour (0xff0b0907) : Colour (0xff3a2a16)); g.fillRoundedRectangle (frame, deco() ? 2.0f : 10.0f);
+        drawSprite (g, deco() ? "deco_klub.jpg" : "mucha_jesien.jpg", frame.reduced (12).withTrimmedBottom (14), RectanglePlacement::centred | RectanglePlacement::fillDestination);
+        if (deco()) decoFrame (g, frame.reduced (2), col::amber, 8); else nouveauFrame (g, frame.reduced (2), col::amber, col::accent2, 34);
+        g.setColour (col::text.withAlpha (0.8f)); g.setFont (FontOptions (serifName(), 11.5f, Font::italic));
+        g.drawText (deco() ? U ("Klub „Pod Złotym Wachlarzem”") : U ("A. Mucha, „Jesień”, 1896"), frame.withTrimmedTop (frame.getHeight() - 24).toNearestInt(), Justification::centred);
+    }
 
     // chord chart: one chip per chord, width ~ duration
     if (! prog.empty())
@@ -687,51 +702,24 @@ void BandPage::paint (Graphics& g)
             if (y + rowH > area.getBottom() + 4) break;
             auto chip = Rectangle<float> (x, y, w, rowH - 8);
             const bool cur = i == current;
-            g.setColour (cur ? col::amber : col::panel2); g.fillRoundedRectangle (chip, 6);
-            g.setColour (cur ? col::amber.brighter (0.3f) : col::line); g.drawRoundedRectangle (chip, 6, 1.0f);
-            g.setColour (cur ? Colour (0xff1a1410) : col::text); g.setFont (FontOptions (w < 60 ? 14.0f : 17.0f, Font::bold));
+            g.setColour (cur ? (deco() ? col::accent2 : col::amber) : col::panel2.withAlpha (0.9f)); g.fillRoundedRectangle (chip, deco() ? 2.0f : 9.0f);
+            g.setColour (cur ? col::amber.brighter (0.3f) : col::line); g.drawRoundedRectangle (chip, deco() ? 2.0f : 9.0f, 1.0f);
+            g.setColour (cur ? (deco() ? Colours::white : Colour (0xff1a1410)) : col::text); g.setFont (FontOptions (w < 60 ? 14.0f : 17.0f, Font::bold));
             g.drawFittedText (chordLabel (prog[(size_t) i]), chip.toNearestInt().reduced (4, 0), Justification::centred, 1);
             x += w + 6;
         }
     }
-    // stage illustrations above the instrument knobs
-    auto drawKit = [&] (Rectangle<float> r)
-    {
-        g.setColour (Colour (0xff3a3a3e)); g.fillEllipse (r.getCentreX() - 34, r.getBottom() - 62, 68, 60);        // kick
-        g.setColour (Colour (0xffd9d4c8)); g.fillEllipse (r.getCentreX() - 26, r.getBottom() - 54, 52, 44);
-        g.setColour (Colour (0xff9a2a2a)); g.fillEllipse (r.getCentreX() - 10, r.getBottom() - 40, 20, 18);
-        g.setColour (Colour (0xffc9a24a));
-        g.fillEllipse (r.getX() + 4, r.getY() + 14, 56, 10); g.drawLine (r.getX() + 32, r.getY() + 24, r.getX() + 32, r.getBottom() - 4, 2.0f);   // hi-hat
-        g.fillEllipse (r.getRight() - 72, r.getY() + 2, 70, 12); g.drawLine (r.getRight() - 37, r.getY() + 14, r.getRight() - 37, r.getBottom() - 4, 2.0f); // ride
-        g.setColour (Colour (0xffe8e2d6)); g.fillEllipse (r.getX() + 40, r.getBottom() - 58, 40, 14);               // snare
-    };
-    auto drawBass = [&] (Rectangle<float> r)
-    {
-        Path body; const float cx = r.getCentreX(), top = r.getY() + 6, bot = r.getBottom() - 4;
-        body.startNewSubPath (cx, top + 46);
-        body.cubicTo (cx + 30, top + 46, cx + 26, top + 74, cx + 20, top + 80);
-        body.cubicTo (cx + 38, top + 92, cx + 36, bot - 8, cx, bot);
-        body.cubicTo (cx - 36, bot - 8, cx - 38, top + 92, cx - 20, top + 80);
-        body.cubicTo (cx - 26, top + 74, cx - 30, top + 46, cx, top + 46);
-        g.setGradientFill (ColourGradient (Colour (0xffb5652b), cx - 30, top, Colour (0xff5a2a12), cx + 30, bot, false)); g.fillPath (body);
-        g.setColour (Colour (0xff1a1a1a)); g.fillRect (cx - 2.5f, top, 5.0f, bot - top - 18);
-        g.fillRoundedRectangle (cx - 6, top - 4, 12, 16, 4);
-        g.setColour (Colour (0xff1a0c06)); g.fillRoundedRectangle (cx - 13, top + 96, 3, 16, 1.5f); g.fillRoundedRectangle (cx + 10, top + 96, 3, 16, 1.5f);
-    };
-    auto drawKeys = [&] (Rectangle<float> r)
-    {
-        auto k = Rectangle<float> (r.getX() + 6, r.getBottom() - 58, r.getWidth() - 12, 44);
-        g.setColour (Colour (0xff2b2b2e)); g.fillRoundedRectangle (k, 5);
-        auto keysArea = k.reduced (8, 10).withTrimmedTop (8);
-        const int nKeys = 21; const float kw = keysArea.getWidth() / nKeys;
-        for (int i = 0; i < nKeys; ++i) { g.setColour (Colour (0xfff2eee6)); g.fillRect (keysArea.getX() + i * kw + 0.5f, keysArea.getY(), kw - 1, keysArea.getHeight()); }
-        for (int i = 0; i < nKeys - 1; ++i) { const int m = i % 7; if (m == 2 || m == 6) continue; g.setColour (Colour (0xff111111)); g.fillRect (keysArea.getX() + (i + 1) * kw - kw * 0.3f, keysArea.getY(), kw * 0.6f, keysArea.getHeight() * 0.6f); }
-        g.setColour (Colour (0xff1c1c1c)); g.drawLine (k.getX() + 14, k.getBottom(), k.getX() + 8, r.getBottom() + 6, 3.0f); g.drawLine (k.getRight() - 14, k.getBottom(), k.getRight() - 8, r.getBottom() + 6, 3.0f);
-    };
+    // the band on stage: painted instruments (the keys follow the chosen instrument)
     const float sy = (float) stage.getY();
-    drawKit ({ (float) drums.getX() - 40, sy, (float) drums.getWidth() + 80, 120 });
-    drawBass ({ (float) bass.getX() - 20, sy - 6, (float) bass.getWidth() + 40, 130 });
-    drawKeys ({ (float) keys.getX() - 60, sy, (float) keys.getWidth() + 120, 120 });
+    auto put = [&] (const String& file, Rectangle<float> r)
+    {
+        g.setColour (Colours::black.withAlpha (0.3f)); g.fillEllipse (r.withTrimmedTop (r.getHeight() - 12).translated (0, 4));
+        drawSprite (g, file, r, RectanglePlacement::centred | RectanglePlacement::yBottom);
+    };
+    put ("inst_perkusja.png", { (float) drums.getX() - 30, sy - 14, (float) drums.getWidth() + 60, 140 });
+    put ("inst_bas.png", { (float) bass.getX(), sy - 18, (float) bass.getWidth(), 144 });
+    const bool piano = proc.apvts.getRawParameterValue ("keysInst")->load() > 0.5f;
+    put (piano ? "inst_fortepian.png" : "inst_klawisze.png", { (float) keys.getX() - 50, sy - 10, (float) keys.getWidth() + 100, 136 });
 }
 
 void BandPage::resized()
@@ -743,7 +731,7 @@ void BandPage::resized()
     auto row = left.removeFromTop (30); key.setBounds (row.removeFromLeft (row.getWidth() / 2 - 4)); row.removeFromLeft (8); style.setBounds (row);
     left.removeFromTop (6);
     tempo.setBounds (left.withSizeKeepingCentre (110, left.getHeight()));
-    chart = Rectangle<int> (366, 42, getWidth() - 366 - 22, 270);
+    chart = Rectangle<int> (366, 42, getWidth() - 366 - 212, 270);
     // stage
     auto st = Rectangle<int> (12, 350, getWidth() - 24, getHeight() - 360).reduced (20, 34);
     stage = st.withHeight (130);
@@ -771,19 +759,24 @@ SpacePage::SpacePage (JesiennaProcessor& p)
 
 void SpacePage::paint (Graphics& g)
 {
+    backdrop (g, getLocalBounds(), deco() ? "deco_studio.jpg" : "secesja_sala.jpg", 0.24f, 0.5f, 0.45f, this);
     auto rack = [&] (Rectangle<int> r, const String& t, const String& sub)
     {
         auto f = r.toFloat();
         g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (f.translated (3, 5), 6);
-        g.setGradientFill (ColourGradient (Colour (0xff34302c), f.getX(), f.getY(), Colour (0xff1c1916), f.getX(), f.getBottom(), false));
-        g.fillRoundedRectangle (f, 6);
+        frosted (g, f, deco() ? 3.0f : 12.0f, this);
+        g.setGradientFill (ColourGradient (col::panel2.withAlpha (0.62f), f.getX(), f.getY(), col::panel.darker (0.4f).withAlpha (0.74f), f.getX(), f.getBottom(), false));
+        g.fillRoundedRectangle (f, deco() ? 3.0f : 12.0f);
         for (float y = f.getY() + 3; y < f.getBottom() - 3; y += 2) { g.setColour (Colours::white.withAlpha (0.02f)); g.drawHorizontalLine ((int) y, f.getX() + 40, f.getRight() - 40); }
         // rack ears with holes
         for (auto ex : { f.getX(), f.getRight() - 30 })
         {
-            g.setColour (Colour (0xff4a4540)); g.fillRect (ex, f.getY(), 30.0f, f.getHeight());
+            g.setColour (deco() ? Colour (0xff1a1714) : Colour (0xff4a3a22)); g.fillRect (ex, f.getY(), 30.0f, f.getHeight());
+            g.setColour (col::amber.withAlpha (0.6f)); g.drawRect (ex + 2, f.getY() + 2, 26.0f, f.getHeight() - 4, 1.0f);
             for (auto hy : { f.getY() + 18, f.getBottom() - 18 }) { g.setColour (Colour (0xff0e0c0a)); g.fillRoundedRectangle (ex + 8, hy - 5, 14, 10, 5); }
         }
+        if (deco()) { decoFrame (g, f.reduced (34, 4), col::amber.withAlpha (0.5f), 8); decoFan (g, { f.getRight() - 46, f.getBottom() - 6 }, 26, -1.57f, 0.0f, 8, col::amber.withAlpha (0.5f)); }
+        else { nouveauCorner (g, { f.getX() + 36, f.getY() + 6 }, 30, 1, 1, col::amber, col::accent2); nouveauCorner (g, { f.getRight() - 36, f.getBottom() - 6 }, 30, -1, -1, col::amber, col::accent2); }
         g.setColour (col::amber); g.setFont (FontOptions (serifName(), 18.0f, Font::bold | Font::italic));
         g.drawText (t, r.reduced (46, 10).removeFromTop (24), Justification::left);
         g.setColour (col::dim); g.setFont (FontOptions (12.0f));
@@ -846,26 +839,20 @@ void JesiennaEditor::Header::paint (Graphics& g)
 {
     auto& e = *ed;
     auto r = getLocalBounds();
-    g.setGradientFill (ColourGradient (Colour (0xff201914), 0, 0, ui::col::bg, 0, (float) r.getHeight(), false));
-    g.fillRect (r);
-    // skyline silhouette behind the title
-    {
-        Path sky; const float base = (float) r.getHeight() - 2; float x = 0;
-        Random rnd (11);
-        sky.startNewSubPath (0, base);
-        while (x < 560) { const float w = 14 + rnd.nextFloat() * 26, h = 10 + rnd.nextFloat() * 26; sky.lineTo (x, base - h); sky.lineTo (x + w, base - h); x += w; }
-        sky.lineTo (300, base - 30); sky.lineTo (306, base - 62); sky.lineTo (312, base - 30);   // a spire
-        sky.lineTo (560, base); sky.closeSubPath();
-        g.setColour (Colour (0xff2a211b)); g.fillPath (sky);
-    }
+    ui::backdrop (g, r, ui::deco() ? "deco_studio.jpg" : "secesja_sala.jpg", 0.5f, 0.5f, ui::deco() ? 0.3f : 0.18f);
+    g.setGradientFill (ColourGradient (ui::col::bg.withAlpha (0.85f), 0, 0, ui::col::bg.withAlpha (0.0f), 520, 0, false));
+    g.fillRect (r.withWidth (560));
+    g.setColour (ui::col::amber.withAlpha (0.6f)); g.drawHorizontalLine (r.getBottom() - 1, 0, (float) r.getWidth());
+    if (ui::deco()) ui::decoFan (g, { 400.0f, (float) r.getBottom() }, 70, -1.4f, 1.4f, 16, ui::col::amber.withAlpha (0.35f));
+    else ui::nouveauCorner (g, { 4.0f, 4.0f }, 56, 1, 1, ui::col::amber, ui::col::accent2);
     g.setColour (ui::col::amber); g.setFont (FontOptions (ui::serifName(), 30.0f, Font::bold | Font::italic));
-    g.drawText ("Jesienna Warszawa", 18, 10, 360, 36, Justification::left);
+    g.drawText ("Jesienna Warszawa", ui::deco() ? 18 : 40, 10, 360, 36, Justification::left);
     g.setColour (ui::col::dim); g.setFont (FontOptions (12.0f));
-    g.drawText (jw::U ("gitara · wzmacniacze · zespół · przestrzeń"), 20, 46, 340, 16, Justification::left);
+    g.drawText (jw::U ("gitara · wzmacniacze · zespół · przestrzeń"), ui::deco() ? 20 : 42, 46, 340, 16, Justification::left);
 
     // tuner
     auto tr = Rectangle<int> (W - 500, 10, 230, 62);
-    g.setColour (ui::col::panel); g.fillRoundedRectangle (tr.toFloat(), 8);
+    g.setColour (ui::col::panel.withAlpha (0.85f)); g.fillRoundedRectangle (tr.toFloat(), 8);
     g.setColour (ui::col::text); g.setFont (FontOptions (24.0f, Font::bold));
     g.drawText (e.tunerNote.isEmpty() ? jw::U ("–") : e.tunerNote, tr.removeFromLeft (70), Justification::centred);
     auto scale = tr.reduced (8, 20);
@@ -883,7 +870,7 @@ void JesiennaEditor::Header::paint (Graphics& g)
 
     // chord display
     auto br = Rectangle<int> (W - 260, 10, 150, 62);
-    g.setColour (ui::col::panel); g.fillRoundedRectangle (br.toFloat(), 8);
+    g.setColour (ui::col::panel.withAlpha (0.85f)); g.fillRoundedRectangle (br.toFloat(), 8);
     g.setColour (ui::col::text); g.setFont (FontOptions (24.0f, Font::bold));
     g.drawText (e.chordText.isEmpty() ? jw::U ("–") : e.chordText, br.removeFromTop (38), Justification::centred);
     g.setColour (ui::col::dim); g.setFont (FontOptions (11.5f)); g.drawText (e.barText, br, Justification::centred);
@@ -931,13 +918,29 @@ JesiennaEditor::JesiennaEditor (JesiennaProcessor& p) : AudioProcessorEditor (p)
     content.addAndMakeVisible (status);
     tbuf.assign (4096, 0.0f);
 
+    // studio style: Art Deco (with a colour) or Secession; remembered in the project and as the default for new windows
+    decoButton.setButtonText (jw::U ("Art déco")); nouveauButton.setButtonText (jw::U ("Secesja"));
+    decoButton.onClick = [this] { setTheme (0, ui::theme().colour); };
+    nouveauButton.onClick = [this] { setTheme (1, ui::theme().colour); };
+    paletteBox.addItemList (ui::decoPaletteNames(), 1);
+    paletteBox.onChange = [this] { if (paletteBox.getSelectedItemIndex() >= 0) setTheme (0, paletteBox.getSelectedItemIndex()); };
+    for (auto* c : std::initializer_list<Component*> { &decoButton, &nouveauButton, &paletteBox }) content.addAndMakeVisible (c);
+
     content.setBounds (0, 0, W, H);
     header.setBounds (0, 0, W, 82);
     for (int i = 0; i < 3; ++i) tabButtons[i]->setBounds (16 + i * 190, 88, 184, 32);
     presetBox.setBounds (390, 16, 300, 30);
+    decoButton.setBounds (W - 430, 90, 100, 28); nouveauButton.setBounds (W - 326, 90, 100, 28); paletteBox.setBounds (W - 218, 90, 200, 28);
     status.setBounds (390, 50, 340, 20);
     for (auto* c : std::initializer_list<Component*> { rig.get(), band.get(), space.get() }) c->setBounds (0, 126, W, H - 126);
     showTab (0);
+    {
+        const auto& st = proc.apvts.state;
+        auto props = themeDefaults();
+        const int style = st.hasProperty ("uiStyle") ? (int) st["uiStyle"] : props->getIntValue ("uiStyle", 0);
+        const int colour = st.hasProperty ("uiColour") ? (int) st["uiColour"] : props->getIntValue ("uiColour", 0);
+        setTheme (style, colour);
+    }
 
     setResizable (true, true);
     getConstrainer()->setFixedAspectRatio ((double) W / H);
@@ -947,6 +950,32 @@ JesiennaEditor::JesiennaEditor (JesiennaProcessor& p) : AudioProcessorEditor (p)
 }
 
 JesiennaEditor::~JesiennaEditor() { setLookAndFeel (nullptr); }
+
+std::unique_ptr<PropertiesFile> JesiennaEditor::themeDefaults()
+{
+    PropertiesFile::Options o; o.applicationName = "ustawienia"; o.folderName = "Jesienna Warszawa"; o.filenameSuffix = ".xml";
+    o.osxLibrarySubFolder = "Application Support";
+    return std::make_unique<PropertiesFile> (o);
+}
+
+void JesiennaEditor::setTheme (int style, int colour)
+{
+    ui::theme().style = jlimit (0, 1, style);
+    ui::theme().colour = jlimit (0, (int) ui::decoPalettes().size() - 1, colour);
+    ui::applyThemeColours();
+    look.refreshColours();
+    proc.apvts.state.setProperty ("uiStyle", ui::theme().style, nullptr);
+    proc.apvts.state.setProperty ("uiColour", ui::theme().colour, nullptr);
+    if (auto props = themeDefaults()) { props->setValue ("uiStyle", ui::theme().style); props->setValue ("uiColour", ui::theme().colour); props->saveIfNeeded(); }
+    decoButton.setToggleState (ui::deco(), dontSendNotification); nouveauButton.setToggleState (! ui::deco(), dontSendNotification);
+    paletteBox.setSelectedItemIndex (ui::theme().colour, dontSendNotification);
+    paletteBox.setVisible (ui::deco());
+    status.setColour (Label::textColourId, ui::col::amber);
+    for (auto* c : std::initializer_list<Component*> { rig.get(), band.get(), space.get() }) c->resized();
+    rig->amp.refresh();
+    sendLookAndFeelChange();
+    repaint();
+}
 
 void JesiennaEditor::showTab (int i)
 {

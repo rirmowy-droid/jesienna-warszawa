@@ -41,7 +41,7 @@ jobs:
           mkdir -p stage/vst3 stage/app stage/data/sample
           cp -r "$A/VST3/Jesienna Warszawa.vst3" stage/vst3/
           cp "$A/Standalone/Jesienna Warszawa.exe" stage/app/
-          cp -r pc/data/cab pc/data/rooms pc/data/nam stage/data/
+          cp -r pc/data/cab pc/data/rooms pc/data/nam pc/data/ui stage/data/
           for k in zestaw kontrabas rhodes fortepian; do cp -r sample/$k stage/data/sample/; done
           cp sample/manifest.json sample/LICENCJE.md stage/data/sample/
           cp sample/LICENCJE.md stage/data/LICENCJE.md

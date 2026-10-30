@@ -1,15 +1,12 @@
 #pragma once
 #include "PluginProcessor.h"
+#include "Theme.h"
 
 namespace ui {
 
 using namespace juce;
 using APVTS = AudioProcessorValueTreeState;
 
-namespace col {
-    const Colour bg { 0xff15110f }, panel { 0xff221b17 }, panel2 { 0xff2b221d }, line { 0xff4a3a30 },
-                 amber { 0xffe0a24a }, text { 0xffeee2d4 }, dim { 0xff8f8274 }, green { 0xff8fd18a };
-}
 
 /** Visual style of an amp head, chosen per amp model. */
 struct AmpLook
@@ -22,6 +19,7 @@ class Look : public LookAndFeel_V4
 {
 public:
     Look();
+    void refreshColours();
     void drawRotarySlider (Graphics&, int x, int y, int w, int h, float pos, float a0, float a1, Slider&) override;
     void drawToggleButton (Graphics&, ToggleButton&, bool hl, bool down) override;
     void drawComboBox (Graphics&, int w, int h, bool down, int bx, int by, int bw, int bh, ComboBox&) override;
@@ -150,6 +148,8 @@ public:
     void resized() override;
     static constexpr int W = 1200, H = 800;
     void showTab (int i);
+    void setTheme (int style, int colour);
+    static std::unique_ptr<juce::PropertiesFile> themeDefaults();
 private:
     void timerCallback() override;
     void updateTuner();
@@ -160,7 +160,8 @@ private:
     std::unique_ptr<ui::BandPage> band;
     std::unique_ptr<ui::SpacePage> space;
     juce::OwnedArray<juce::TextButton> tabButtons;
-    juce::ComboBox presetBox;
+    juce::ComboBox presetBox, paletteBox;
+    juce::TextButton decoButton, nouveauButton;
     juce::Label status;
     std::vector<float> tbuf; int tfill = 0;
     float tunerHz = 0, inLevel = 0, outL = 0, outR = 0, tunerCents = 0;

@@ -30,6 +30,11 @@ cyfrowy ping-pong – zawsze w tempie projektu. To modele: efektów ruchomych w 
 Pogłos: prawdziwe nagrania sprężyn (Fisher K-10, sprężyna wzmacniacza, HG), płyty i kilku sal.
 "Siła" to dwell – jak mocno uderzasz w sprężyny.
 
+WYGLĄD STUDIA
+Przyciski „Art déco” i „Secesja” w prawym górnym rogu zmieniają całe studio. W art déco obok jest lista kolorów
+(róż, bordo, szmaragd, szafir, czerń i złoto, bursztyn) – zmienia się też kolor malowanych kolumn, mikrofonów i instrumentów.
+Wybór zapisuje się w projekcie i jako domyślny dla nowych okien wtyczki.
+
 DANE
 IR-y kolumn, przestrzenie i sample zespołu są w C:\ProgramData\Jesienna Warszawa.
 Licencje dźwięków: plik LICENCJE.md w tym folderze; profile NAM: nam\ZRODLO.md (GPL v3). Kod wtyczki: AGPL v3 (LICENSE.txt).
