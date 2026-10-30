@@ -3,7 +3,7 @@
 // master EQ, tape / cassette colour and a limiter. Settings are remembered on the phone.
 'use strict';
 
-const MX_DEFAULT_CH = {pan:0, mute:false, solo:false, hpf:30, low:0, mid:0, midF:900, high:0, drive:0, comp:.2, color:'none', colorMix:.6, rev:.5, dly:0};
+const MX_DEFAULT_CH = {room:'wspolna', pan:0, mute:false, solo:false, hpf:30, low:0, mid:0, midF:900, high:0, drive:0, comp:.2, color:'none', colorMix:.6, rev:.5, dly:0};
 const MX = {
   ch: {
     tlo:   {...MX_DEFAULT_CH, hpf:140, mid:1, midF:2800, rev:.75, pan:0},
@@ -27,29 +27,18 @@ async function loadIR(id){
   if (!id || id==='none') return null;
   if (!irBuffers[id]){
     const meta = IRS.find(x=>x.id===id); if (!meta) return null;
-    irBuffers[id] = decode(meta.file).then(trimIR).then(async b=>{ b._g = await irGain(b); return b; });
+    irBuffers[id] = decode(meta.file).then(b=>trimIR(b, meta.gain||1));
   }
   return irBuffers[id];
 }
-function trimIR(b){ // remove the codec's leading silence so a colour insert does not delay the beat
+function trimIR(b, gain=1, maxSec=99){ // remove the codec's leading silence (a colour insert must not delay the beat), restore level
   const d=b.getChannelData(0); let mx=0; for (let i=0;i<Math.min(d.length,b.sampleRate);i++) mx=Math.max(mx,Math.abs(d[i]));
   let s=0; while (s<d.length && Math.abs(d[s])<mx*.05) s++; s=Math.max(0,s-4);
-  const n=b.length-s, out=ctx.createBuffer(b.numberOfChannels, n, b.sampleRate);
-  for (let c=0;c<b.numberOfChannels;c++) out.copyToChannel(b.getChannelData(c).subarray(s), c);
+  const n=Math.min(b.length-s, Math.floor(maxSec*b.sampleRate)), out=ctx.createBuffer(b.numberOfChannels, n, b.sampleRate), f=Math.min(n, Math.floor(.12*b.sampleRate));
+  for (let c=0;c<b.numberOfChannels;c++){ const src=b.getChannelData(c).subarray(s, s+n), o=new Float32Array(n);
+    for (let i=0;i<n;i++) o[i]=src[i]*gain*(i>n-f ? (n-i)/f : 1); out.copyToChannel(o, c); }
   return out;
 }
-// how much louder/quieter a convolver with this IR makes a sound → used to keep every space and colour at the same level
-async function irGain(b){
-  try {
-    const sr=b.sampleRate, oc=new OfflineAudioContext(2, Math.floor(sr*1.2), sr);
-    const nb=oc.createBuffer(1, sr, sr), d=nb.getChannelData(0); let pk=0; for (let i=0;i<d.length;i++){ pk=pk*.7+(Math.random()*2-1)*.3; d[i]=pk; }
-    const src=oc.createBufferSource(); src.buffer=nb; const cv=oc.createConvolver(); cv.buffer=b; src.connect(cv); cv.connect(oc.destination); src.start();
-    const out=await oc.startRendering(), o=out.getChannelData(0);
-    let ei=0, eo=0; for (let i=0;i<d.length;i++) ei+=d[i]*d[i]; for (let i=Math.floor(sr*.1); i<Math.floor(sr*1.1); i++) eo+=o[i]*o[i];
-    return clamp(Math.sqrt(ei/Math.max(eo,1e-12)), .05, 20);
-  } catch(e){ return 1; }
-}
-let synthIRGain = null;
 // soft saturation with unity gain for quiet signals: it only rounds off the peaks (no jump in loudness)
 function driveCurve(amount){ const n=2048, g=1+amount*8, c=new Float32Array(n); for (let i=0;i<n;i++){ const x=(i/(n-1)*2-1)*1.5; c[i]=Math.tanh(g*x)/g; } return c; }
 
@@ -63,7 +52,7 @@ function buildChannel(id){
   n.mid = ctx.createBiquadFilter(); n.mid.type='peaking'; n.mid.Q.value=.9;
   n.high = ctx.createBiquadFilter(); n.high.type='highshelf'; n.high.frequency.value=7000;
   n.comp = ctx.createDynamicsCompressor(); n.comp.attack.value=.008; n.comp.release.value=.2; n.comp.knee.value=8;
-  n.colorDry = ctx.createGain(); n.colorWet = ctx.createGain(); n.colorConv = ctx.createConvolver();
+  n.colorDry = ctx.createGain(); n.colorWet = ctx.createGain(); n.colorConv = ctx.createConvolver(); n.colorConv.normalize = false;
   n.pan = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
   n.mute = ctx.createGain();
   n.sendRev = ctx.createGain(); n.sendDly = ctx.createGain();
@@ -71,14 +60,18 @@ function buildChannel(id){
   n.comp.connect(n.colorDry); n.colorDry.connect(n.pan);
   n.comp.connect(n.colorConv); n.colorConv.connect(n.colorWet); n.colorWet.connect(n.pan);
   n.pan.connect(n.mute); n.mute.connect(dryOut); n.mute.connect(n.sendRev); n.mute.connect(n.sendDly);
-  n.sendRev.connect(revIn); n.sendDly.connect(dlyIn);
+  n.sendRev.connect(revIn); n.sendRevTarget='wspolna'; n.sendDly.connect(dlyIn);
   CH[id] = n; applyChannel(id);
   return n;
 }
 function channelIn(id){ return (CH[id] || buildChannel(id)).in; }
+function buildChannelIfNeeded(id){ if (!CH[id] && MS) buildChannel(id); }
 function anySolo(){ return Object.values(MX.ch).some(c=>c.solo); }
 async function applyChannel(id){
-  const n=CH[id], c=MX.ch[id]; if (!n) return; const t=ctx.currentTime, set=(p,v)=>p.setTargetAtTime(v,t,.03);
+  const n=CH[id], c=MX.ch[id]; if (!n) return;
+  await loadIRList();
+  // older settings could put a whole room into the colour insert (heavy for a phone) → move it to the room choice
+  if (c.color && IRS.find(x=>x.id===c.color)?.kind==='space'){ if (!c.room || c.room==='wspolna') c.room=c.color; c.color='none'; saveMixer(); } const t=ctx.currentTime, set=(p,v)=>p.setTargetAtTime(v,t,.03);
   set(n.in.gain, volCurve(L[id].vol));
   n.drive.curve = c.drive>0 ? driveCurve(c.drive) : null;
   set(n.hpf.frequency, c.hpf); set(n.low.gain, c.low); set(n.mid.gain, c.mid); set(n.mid.frequency, c.midF); set(n.high.gain, c.high);
@@ -86,9 +79,26 @@ async function applyChannel(id){
   if (n.pan.pan) set(n.pan.pan, c.pan);
   const audible = !c.mute && (!anySolo() || c.solo); set(n.mute.gain, audible ? 1 : 0);
   set(n.sendRev.gain, c.rev); set(n.sendDly.gain, c.dly);
-  if (c.color && c.color!=='none'){ const b=await loadIR(c.color); if (b && n.colorConv.buffer!==b) n.colorConv.buffer=b; set(n.colorWet.gain, c.colorMix*(b?._g ?? 1)); set(n.colorDry.gain, 1-c.colorMix); }
+  // own room for this instrument: one shared reverb per chosen room (two instruments in the same room share it)
+  const want = c.room && c.room!=='wspolna' ? c.room : 'wspolna';
+  if (want !== n.sendRevTarget){ n.sendRev.disconnect(); n.sendRev.connect(want==='wspolna' ? revIn : await roomIn(want)); n.sendRevTarget=want; releaseRooms(); }
+  if (c.color && c.color!=='none'){ const b=await loadIR(c.color); if (b && n.colorConv.buffer!==b) n.colorConv.buffer=b; set(n.colorWet.gain, c.colorMix); set(n.colorDry.gain, 1-c.colorMix); }
   else { set(n.colorWet.gain, 0); set(n.colorDry.gain, 1); }
 }
+// ---------- extra rooms (per-instrument spaces), kept short so a phone can run several ----------
+const ROOMS = {};
+async function roomIn(id){
+  if (ROOMS[id]) return ROOMS[id].in;
+  const r = ROOMS[id] = {in: ctx.createGain(), conv: ctx.createConvolver(), out: ctx.createGain()};
+  r.conv.normalize=false; r.in.connect(r.conv); r.conv.connect(r.out); r.out.connect(fogF); r.out.gain.value = .55;
+  await loadIRList(); const meta=IRS.find(x=>x.id===id);
+  if (meta){ const raw = await decode(meta.file); r.conv.buffer = trimIR(raw, meta.gain||1, 2.5); }
+  return r.in;
+}
+function releaseRooms(){ // free reverbs nobody uses any more
+  for (const id in ROOMS){ if (!Object.values(CH).some(n=>n.sendRevTarget===id)){ try{ ROOMS[id].out.disconnect(); }catch(e){} delete ROOMS[id]; } }
+}
+function roomCount(){ return Object.keys(ROOMS).length; }
 function applyAllChannels(){ for (const id in MX.ch) if (CH[id]) applyChannel(id); }
 
 // ---------- master ----------
@@ -102,7 +112,7 @@ function initMixer(){
   MS.low=ctx.createBiquadFilter(); MS.low.type='lowshelf'; MS.low.frequency.value=120;
   MS.mid=ctx.createBiquadFilter(); MS.mid.type='peaking'; MS.mid.Q.value=.8;
   MS.high=ctx.createBiquadFilter(); MS.high.type='highshelf'; MS.high.frequency.value=8000;
-  MS.colorDry=ctx.createGain(); MS.colorWet=ctx.createGain(); MS.colorConv=ctx.createConvolver();
+  MS.colorDry=ctx.createGain(); MS.colorWet=ctx.createGain(); MS.colorConv=ctx.createConvolver(); MS.colorConv.normalize=false;
   MS.tapeIn=ctx.createGain(); MS.wow=ctx.createDelay(.1); MS.wow.delayTime.value=.012;
   MS.wowLfo=ctx.createOscillator(); MS.wowLfo.frequency.value=.55; MS.wowDepth=ctx.createGain();
   MS.flutLfo=ctx.createOscillator(); MS.flutLfo.frequency.value=6.3; MS.flutDepth=ctx.createGain();
@@ -143,14 +153,13 @@ async function applyMaster(){
   if (!MS) return; const m=MX.master, t=ctx.currentTime, set=(p,v)=>p.setTargetAtTime(v,t,.05);
   await loadIRList();
   const sp = IRS.find(x=>x.id===m.space);
-  if (synthIRGain===null) synthIRGain = await irGain(conv.buffer);
-  let spG = 1;
-  if (sp){ const b=await loadIR(sp.id); if (b){ if (conv.buffer!==b) conv.buffer=b; spG = b._g / synthIRGain; } }
-  set(MS.revReturn.gain, m.spaceMix*1.4*spG);                       // every space sits at a similar level
+  if (sp){ const b=await loadIR(sp.id); if (b && conv.buffer!==b){ conv.normalize=false; conv.buffer=b; } }
+  set(MS.revReturn.gain, m.spaceMix*.55);                            // IRs are unit-energy, so every space sits at a similar level
+  for (const id in ROOMS) set(ROOMS[id].out.gain, m.spaceMix*.55);
   const gr = GRIME[sp?.group] || GRIME['Studia i pokoje'];
   set(MS.ambF.frequency, gr.f); set(MS.ambG.gain, gr.amb*m.grime*3); set(MS.ambLfoG.gain, gr.amb*m.grime*3*gr.lfo); set(MS.humG.gain, gr.hum*m.grime*3);
   set(MS.low.gain, m.low); set(MS.mid.gain, m.mid); set(MS.mid.frequency, m.midF); set(MS.high.gain, m.high);
-  if (m.color && m.color!=='none'){ const b=await loadIR(m.color); if (b && MS.colorConv.buffer!==b) MS.colorConv.buffer=b; set(MS.colorWet.gain, m.colorMix*(b?._g ?? 1)); set(MS.colorDry.gain, 1-m.colorMix); }
+  if (m.color && m.color!=='none'){ const b=await loadIR(m.color); if (b && MS.colorConv.buffer!==b) MS.colorConv.buffer=b; set(MS.colorWet.gain, m.colorMix); set(MS.colorDry.gain, 1-m.colorMix); }
   else { set(MS.colorWet.gain, 0); set(MS.colorDry.gain, 1); }
   // tape: pitch wobble (wow & flutter), soft saturation, darker top, hiss
   const tp=m.tape;
@@ -226,17 +235,23 @@ async function buildMixerUI(){
       mxSlider('Kompresja', 0, 1, .01, c.comp, fmtPct, v=>ch('comp',v)),
       mxSlider('Przestrzeń (wysyłka)', 0, 1.2, .01, c.rev, fmtPct, v=>ch('rev',v)),
       mxSlider('Echo (wysyłka)', 0, 1.2, .01, c.dly, fmtPct, v=>ch('dly',v)));
-    const colW2=document.createElement('label'); colW2.className='fld'; colW2.textContent='Kolor (sprzęt / głośnik / taśma)';
-    colW2.appendChild(irSelect('any', c.color, true, v=>ch('color',v)));
+    const roomW=document.createElement('label'); roomW.className='fld'; roomW.textContent='Pomieszczenie tego instrumentu';
+    const rs=irSelect('space', c.room||'wspolna', false, async v=>{ c.room=v; saveMixer(); if (ctx){ buildChannelIfNeeded(id); await applyChannel(id); } roomHint(); }); rs.insertBefore(new Option('wspólne (jak cały zespół)','wspolna'), rs.firstChild); rs.value=c.room||'wspolna';
+    roomW.appendChild(rs);
+    const colW2=document.createElement('label'); colW2.className='fld'; colW2.textContent='Kolor (taśma / gramofon / głośnik)';
+    colW2.appendChild(irSelect('color', c.color, true, v=>ch('color',v)));
     const colM2=mxSlider('Ilość koloru', 0, 1, .01, c.colorMix, fmtPct, v=>ch('colorMix',v));
     const det=document.createElement('details'); const sum=document.createElement('summary'); sum.textContent='Korektor i efekty';
-    det.append(sum, g2, colW2, colM2);
+    det.append(sum, roomW, g2, colW2, colM2);
     card.append(head, det); box.appendChild(card);
   }
+  const hint=document.createElement('div'); hint.className='note'; hint.id='roomHint'; box.appendChild(hint); roomHint();
   const reset=document.createElement('button'); reset.className='btn'; reset.textContent='Przywróć ustawienia miksu';
   reset.onclick=()=>{ try{ localStorage.removeItem('jw_mixer'); }catch(e){} location.reload(); };
   const credit=document.createElement('div'); credit.className='note'; credit.style.marginTop='10px';
   credit.textContent='Przestrzenie i kolory to prawdziwe odpowiedzi impulsowe z biblioteki „IR Library” Connera (licencja MIT). Nagrania z miejsc publicznych mają naturalne szumy i niedoskonałości.';
   box.append(reset, credit);
 }
+function roomHint(){ const el=$('roomHint'); if (!el) return; const k=roomCount();
+  el.textContent = k>=3 ? `Instrumenty grają w ${k} osobnych pomieszczeniach naraz. Na słabszym telefonie może to przycinać dźwięk – wtedy ustaw części z nich „wspólne”.` : ''; el.classList.toggle('err', k>=3); }
 function syncLayerVol(id){ const r=document.querySelector(`[data-layervol="${id}"]`); if (r) r.value=Math.round(L[id].vol*100); }
