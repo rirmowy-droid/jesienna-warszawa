@@ -12,6 +12,7 @@ Pełny spis plików jest w `manifest.json`.
 | kontrabas, kontrabas_szumy | [D. Smolken – Rubner double bass](https://github.com/sfzinstruments/dsmolken.double-bass) | CC0 |
 | chor_* | [epic-choir](https://github.com/thepok/epic-choir) (thepok), oparte na zbiorze VocalSet | **CC BY 4.0**: wymagane podanie autorów (tekst niżej) |
 | rhodes | [jRhodes3d](https://github.com/sfzinstruments/jlearman.jRhodes3d) (Jeff Learman) | **CC BY-NC-SA 4.0** przy udostępnianiu sampli w aplikacji: tylko użytek niekomercyjny i z podaniem autora. Na użytek komercyjny autor udziela licencji na prośbę (jjlearman@gmail.com) |
+| zestaw (ride, werbel, stopa, hi-hat) | [Salamander Drumkit](https://github.com/studiorack/salamander-drumkit) (Alexander Holm) | **CC BY-SA 3.0**: wymagane podanie autora; zmienione sample udostępniamy na tej samej licencji |
 | (wcześniej) trąbka, trąbka z tłumikiem | [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) | CC0 |
 | (wcześniej) saksofon barytonowy | [Bear Sax – Karoryfer Samples](https://github.com/sfzinstruments/karoryfer.bear-sax) | CC0 |
 
@@ -22,3 +23,6 @@ Chór:
 
 Rhodes:
 > Rhodes samples: jRhodes3d by Jeff Learman, CC BY-NC-SA 4.0
+
+Perkusja:
+> Drum samples: Salamander Drumkit by Alexander Holm, CC BY-SA 3.0

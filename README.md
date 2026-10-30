@@ -20,3 +20,4 @@ Szczegóły i wymagane podpisy są w [`sample/LICENCJE.md`](sample/LICENCJE.md).
 - VCSL, VSCO 2 CE, kontrabas D. Smolkena, Bear Sax: CC0.
 - Chór (epic-choir / VocalSet): CC BY 4.0, wymagane podanie autorów.
 - Rhodes (jRhodes3d, Jeff Learman): CC BY-NC-SA 4.0, tylko do użytku niekomercyjnego.
+- Zestaw perkusyjny (Salamander Drumkit, Alexander Holm): CC BY-SA 3.0, wymagane podanie autora.

@@ -81,7 +81,7 @@
   <div class="credits">
     Sample: VCSL i VSCO 2 CE (Versilian Studios, CC0), kontrabas D. Smolkena (CC0), Bear Sax (Karoryfer, CC0).
     Chór: Choir samples derived from VocalSet (Wilkins, Seetharaman, Wahl, Pardo 2018), CC BY 4.0, https://doi.org/10.5281/zenodo.1442513 — epic-choir by thepok.
-    Rhodes: jRhodes3d by Jeff Learman, CC BY-NC-SA 4.0. Syntezatory generowane na żywo.
+    Rhodes: jRhodes3d by Jeff Learman, CC BY-NC-SA 4.0. Zestaw perkusyjny: Salamander Drumkit by Alexander Holm, CC BY-SA 3.0. Syntezatory generowane na żywo.
   </div>
 </div>
 
@@ -101,8 +101,8 @@ const LAYER_DB = {p:-8, mf:-4, f:0};
 // ======================= samples =======================
 // Works with the repo's per-file library (sample/manifest.json) and with the packed preview (manifest.json + sprites).
 let MAN = null, SPRITE = false;
-const buffers = {}, loading = {}, levels = {}, sprites = {};
-let ctx, bus, dryOut, revIn, conv, dlyIn, dly, dlyFb, fogF, comp, master;
+const buffers = {}, loading = {}, levels = {}, sprites = {}, ready = {};
+let ctx, bus, dryOut, revIn, conv, dlyIn, dly, dlyFb, fogF, comp, master, bedBus, bedRev;
 
 async function loadManifest(){
   if (MAN) return MAN;
@@ -127,11 +127,11 @@ async function loadInst(key, layersWanted, quiet){
     const id = key+'|'+l; if (loading[id]) return loading[id];
     const files = I.type==='percussion' ? (core ? core.sounds : I.sounds) : Object.values(I.layers[l]).flat();
     if (core){
-      loading[id] = (sprites[core.sprite] ||= decode(core.sprite)).then(sp=>{ for (const f of files){ const [s,d]=core.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } });
+      loading[id] = (sprites[core.sprite] ||= decode(core.sprite)).then(sp=>{ for (const f of files){ const [s,d]=core.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } ready[id]=true; });
     } else if (SPRITE){
-      loading[id] = (sprites[I.sprite[l]] ||= decode(I.sprite[l])).then(sp=>{ for (const f of files){ const [s,d]=I.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } });
+      loading[id] = (sprites[I.sprite[l]] ||= decode(I.sprite[l])).then(sp=>{ for (const f of files){ const [s,d]=I.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } ready[id]=true; });
     } else {
-      loading[id] = Promise.all(files.map(f=>decode(`sample/${key}/${f}`).then(b=>{ buffers[`${key}/${f}`]=prep(b); })));
+      loading[id] = Promise.all(files.map(f=>decode(`sample/${key}/${f}`).then(b=>{ buffers[`${key}/${f}`]=prep(b); }))).then(()=>{ ready[id]=true; });
     }
     return loading[id];
   });
@@ -161,6 +161,10 @@ function initAudio(){
   const dHp = ctx.createBiquadFilter(); dHp.type='highpass'; dHp.frequency.value=200;
   dlyIn.connect(dly); dly.connect(dLp); dLp.connect(dHp); dHp.connect(dlyFb); dlyFb.connect(dly);
   bus.connect(dryOut); bus.connect(revIn); bus.connect(dlyIn); dHp.connect(dryOut); dHp.connect(revIn);
+  // background layer bus: low cut + a little presence, reverb but no delay (keeps it clear instead of mushy)
+  bedBus = ctx.createGain(); const bHp=ctx.createBiquadFilter(); bHp.type='highpass'; bHp.frequency.value=140;
+  const bPk=ctx.createBiquadFilter(); bPk.type='peaking'; bPk.frequency.value=2800; bPk.Q.value=.8; bPk.gain.value=3;
+  bedBus.connect(bHp); bHp.connect(bPk); bPk.connect(dryOut); bedRev = ctx.createGain(); bPk.connect(bedRev); bedRev.connect(revIn);
   revIn.connect(conv); conv.connect(fogF); dryOut.connect(fogF); fogF.connect(comp); comp.connect(master); master.connect(ctx.destination);
   applyMacros();
 }
@@ -181,7 +185,8 @@ function applyMacros(){
   dlyIn.gain.setTargetAtTime(.12 + M.noc*.3 + M.nap*.1, t, .1);
   dlyFb.gain.setTargetAtTime(.3 + M.noc*.3, t, .1);
   dly.delayTime.setTargetAtTime(60/tempo()*.75, t, .3);
-  fogF.frequency.setTargetAtTime(16000*Math.pow(900/16000, M.noc*.85), t, .15);
+  fogF.frequency.setTargetAtTime(18000*Math.pow(3000/18000, Math.max(0,(M.noc-.3)/.7)), t, .15);   // fog only darkens in the upper half of 'Noc'
+  bedRev.gain.setTargetAtTime(.35 + M.noc*.4, t, .1);
   master.gain.setTargetAtTime($('vol').value/100, t, .05);
 }
 ['m_noc','m_nap','m_ruch','vol'].forEach(id=>$(id).addEventListener('input', applyMacros));
@@ -189,16 +194,18 @@ function applyMacros(){
 // ======================= voices =======================
 const MONO = new Set(['sax_tenor','sax_baryton','trabka_tlumik','trabka']);
 const RELEASE = {pianino:.4,rhodes:.45,fm_piano:.4,wibrafon:.7,dzwonki:.9,kieliszki:.8,kontrabas:.18,sax_tenor:.3,sax_baryton:.25,trabka_tlumik:.3,trabka:.3};
-const ATTACK = {chor_alty_oo:.6,chor_tenory_oo:.6,chor_alty_ah:.6,chor_tenory_ah:.6,kieliszki:.3};
+const ATTACK = {chor_alty_oo:.5,chor_tenory_oo:.5,chor_alty_ah:.5,chor_tenory_ah:.5,kieliszki:.3};
 const lastVoice = {};
 function nearest(list, m){ let b=list[0]; for (const r of list) if (Math.abs(r-m)<Math.abs(b-m)) b=r; return b; }
 function noteOn(key, m, o={}){
   if (key.startsWith('syn_')) return synthOn(key, m, o);
   const I = MAN[key]; if (!I) return null;
   const t = o.when ?? ctx.currentTime, vel = clamp(o.vel ?? .6, 0, 1);
-  const av = LAYERS.filter(l=>I.layers[l] && loading[key+'|'+l]);
+  const av = LAYERS.filter(l=>I.layers[l] && ready[key+'|'+l]);
   if (!av.length) return null;
-  const layer = o.layer && av.includes(o.layer) ? o.layer : av[Math.min(av.length-1, Math.floor(vel*av.length))];
+  // wanted layer not downloaded yet → use the nearest one that is, instead of staying silent
+  let layer = o.layer || LAYERS.filter(l=>I.layers[l])[Math.min(2, Math.floor(vel*3))];
+  if (!av.includes(layer)){ const w=LAYERS.indexOf(layer); layer = av.reduce((a,b)=>Math.abs(LAYERS.indexOf(b)-w)<Math.abs(LAYERS.indexOf(a)-w)?b:a); }
   const root = nearest(Object.keys(I.layers[layer]).map(Number), m);
   const file = pick(I.layers[layer][root]), buf = buffers[`${key}/${file}`]; if (!buf) return null;
   const prev = MONO.has(key) ? lastVoice[key] : null, legato = !!(o.legato && prev && prev.alive);
@@ -237,11 +244,12 @@ function synthOn(key, m, o={}){
   const nodes=[]; const osc=(type,freq,det=0)=>{ const x=ctx.createOscillator(); x.type=type; x.frequency.value=freq; x.detune.value=det; nodes.push(x); return x; };
   let amp=.2, atk=.01, rel=.3;
   if (key==='syn_pad'){
-    const fl=ctx.createBiquadFilter(); fl.type='lowpass'; fl.Q.value=.7; fl.frequency.value=450+vel*1100;
-    const lfo=osc('sine',.08+Math.random()*.05), lg=ctx.createGain(); lg.gain.value=280; lfo.connect(lg); lg.connect(fl.frequency);
-    for (const d of [-9,0,8]) osc('sawtooth',f,d+rnd(-2,2)).connect(fl);
-    const sub=osc('sine',f/2), sg=ctx.createGain(); sg.gain.value=.3; sub.connect(sg); sg.connect(out);
-    fl.connect(out); amp=.07*(.6+.4*vel)*gmul; atk=o.attack ?? 1.8; rel=2.5;
+    // warm, clean pad: two detuned triangles + a quiet filtered saw, slow gentle filter movement
+    const fl=ctx.createBiquadFilter(); fl.type='lowpass'; fl.Q.value=.5; fl.frequency.value=1100+vel*1200;
+    const lfo=osc('sine',.07+Math.random()*.04), lg=ctx.createGain(); lg.gain.value=150; lfo.connect(lg); lg.connect(fl.frequency);
+    for (const d of [-7,7]) osc('triangle',f,d+rnd(-1,1)).connect(fl);
+    const sw=osc('sawtooth',f,rnd(-3,3)), swg=ctx.createGain(); swg.gain.value=.35; sw.connect(swg); swg.connect(fl);
+    fl.connect(out); amp=.11*(.6+.4*vel)*gmul; atk=o.attack ?? 1.5; rel=2.2;
   } else if (key==='syn_smyczki'){
     const fl=ctx.createBiquadFilter(); fl.type='lowpass'; fl.frequency.value=1300+vel*2400; fl.Q.value=.4;
     const vib=osc('sine',5.2), vg=ctx.createGain(); vg.gain.value=6; vib.connect(vg);
@@ -270,19 +278,19 @@ function synthOn(key, m, o={}){
 // ======================= layers =======================
 const LAYER_DEF = [
   {id:'tlo',  name:'Tło',       opts:[['chor','Chór „oo”'],['chor_ah','Chór „ah”'],['syn_pad','Pad „mgła”'],['syn_smyczki','Smyczki synt.'],['kieliszki','Kieliszki']], def:'chor'},
-  {id:'bas',  name:'Bas',       opts:[['kontrabas','Kontrabas'],['syn_bas','Bas synt.'],['sax_baryton','Sax baryton']], def:'kontrabas'},
+  {id:'bas',  name:'Bas',       opts:[['kontrabas','Kontrabas'],['syn_bas','Bas synt.']], def:'kontrabas'},
   {id:'akordy',name:'Akordy',   opts:[['rhodes','Rhodes'],['pianino','Pianino'],['fm_piano','FM piano'],['wibrafon','Wibrafon']], def:'rhodes'},
-  {id:'solo', name:'Solista',   opts:[['sax_tenor','Sax tenor'],['trabka_tlumik','Trąbka z tłumikiem'],['wibrafon','Wibrafon'],['syn_dzwon','Dzwon FM'],['dzwonki','Dzwonki']], def:'sax_tenor'},
-  {id:'perk', name:'Perkusja',  opts:[['jazz','Talerz i hi-hat'],['miekka','Miękka (smyczek, shaker)']], def:'jazz'},
+  {id:'solo', name:'Solista',   opts:[['sax_tenor','Sax tenor'],['sax_baryton','Sax baryton'],['trabka_tlumik','Trąbka z tłumikiem'],['wibrafon','Wibrafon'],['syn_dzwon','Dzwon FM'],['dzwonki','Dzwonki']], def:'sax_tenor'},
+  {id:'perk', name:'Perkusja',  opts:[['zestaw','Zestaw jazzowy (ride, werbel, stopa)'],['jazz','Orkiestrowa (talerz, hi-hat)'],['miekka','Miękka (smyczek, shaker)']], def:'zestaw'},
 ];
 const L = {}; // id -> {on, inst, vol}
 const LB = {}; // id -> GainNode (per-layer volume)
 const DEFAULT_VOL = {tlo:.75, bas:.8, akordy:.7, solo:.75, perk:.7};
 const volCurve = v => v*v*1.6;
-function layerBus(id){ if (!LB[id]){ LB[id]=ctx.createGain(); LB[id].gain.value=volCurve(L[id].vol); LB[id].connect(bus); } return LB[id]; }
+function layerBus(id){ if (!LB[id]){ LB[id]=ctx.createGain(); LB[id].gain.value=volCurve(L[id].vol); LB[id].connect(id==='tlo' ? bedBus : bus); } return LB[id]; }
 function layerInsts(id, v){
   if (id==='tlo') return v==='chor' ? ['chor_tenory_oo','chor_alty_oo'] : v==='chor_ah' ? ['chor_tenory_ah','chor_alty_ah'] : [v];
-  if (id==='perk') return v==='jazz' ? ['talerz','hihat','werbel','beben'] : ['talerz','shaker','mark_tree'];
+  if (id==='perk') return v==='zestaw' ? ['zestaw'] : v==='jazz' ? ['talerz','hihat','werbel','beben'] : ['talerz','shaker','mark_tree'];
   return [v];
 }
 function buildLayers(){
@@ -357,7 +365,7 @@ let secIdx=0, secBar=0, prog=PROGS[0], progPos=0, chordBarsLeft=0, curChord=null
 
 // ======================= scheduler =======================
 let running=false, timer=null, nextT=0, step=0, phrase=[], nextPhraseStep=8, mel=67, userUntil=0;
-const SOLO_RANGE = {sax_tenor:[55,77], trabka_tlumik:[62,81], wibrafon:[62,86], syn_dzwon:[62,88], dzwonki:[64,88]};
+const SOLO_RANGE = {sax_baryton:[43,64], sax_tenor:[55,77], trabka_tlumik:[62,81], wibrafon:[62,86], syn_dzwon:[62,88], dzwonki:[64,88]};
 const solo = () => L.solo.inst, range = () => SOLO_RANGE[solo()] || [60,80];
 const CELLS=[[2,1,1,4],[1,1,2,4],[3,1,4],[2,2,4],[2,6],[4,2,2],[3,3,2],[1,1,1,1,4]];
 function planPhrase(start, s){
@@ -392,11 +400,12 @@ function chordChanged(t){
   const s=SECTIONS[secIdx];
   held.tlo.forEach(v=>v&&v.release(t+.3,.8)); held.tlo=[];
   if (L.tlo.on && s.tlo){
-    const T=TYPES[c.type], g1=(c.root+T.guide[0])%12, g2=(c.root+T.guide[1])%12;
-    const lvl = .35 + M.noc*.35, dur = 60/tempo()*4*c.bars + 1;
+    const T=TYPES[c.type], g1=(c.root+T.guide[0])%12, g2=(c.root+T.guide[1])%12, g3=(c.root+(T.col[0]%12))%12;
+    const lvl = .4 + M.noc*.3, dur = 60/tempo()*4*c.bars + 1;
     const [a,b] = layerInsts('tlo', L.tlo.inst);
-    const lo = snap(56, [g1]), hi = snap(64, [g2]);
-    if (b){ held.tlo.push(noteOn(a, lo, {when:t, vel:.3, layer:'p', gain:lvl, bus:layerBus('tlo')})); held.tlo.push(noteOn(b, hi, {when:t, vel:.3, layer:'p', gain:lvl, bus:layerBus('tlo')})); }
+    const lo = snap(55, [g1]), hi = snap(63, [g2]), top = snap(68, [g3]);
+    if (b){ const o={when:t, vel:.5, layer:'mf', gain:lvl*.8, bus:layerBus('tlo')};
+      held.tlo.push(noteOn(a, lo, o)); held.tlo.push(noteOn(b, hi, o)); held.tlo.push(noteOn(b, top, {...o, gain:lvl*.55})); }
     else if (a.startsWith('syn_')){ held.tlo.push(noteOn(a, bassNote(c.root)+12, {when:t, vel:.4, gain:lvl*1.4, bus:layerBus('tlo')})); held.tlo.push(noteOn(a, hi, {when:t, vel:.35, gain:lvl, bus:layerBus('tlo')})); }
     else held.tlo.push(noteOn(a, snap(78,[g2]), {when:t, vel:.4, gain:lvl, bus:layerBus('tlo')}));
     held.tlo.forEach(v=>v && v.release(t+dur, .8));
@@ -405,14 +414,17 @@ function chordChanged(t){
 const at = (t, fn) => setTimeout(()=>{ if (running) fn(); }, Math.max(0,(t-ctx.currentTime)*1000));
 function schedule(){
   const e8=60/tempo()/2, sw=e8*lerp(.18,.32,1-M.ruch);
-  while (nextT < ctx.currentTime + .6){
+  if (nextT < ctx.currentTime - .05){ const e8b=60/tempo()/2; while (nextT < ctx.currentTime + .05){ nextT += e8b; step++; } }  // fell behind (phone was busy): skip, don't pile notes up
+  const ahead = document.hidden ? 2.5 : .6;
+  while (nextT < ctx.currentTime + ahead){
     const b8 = step%8, t = nextT + (b8%2 ? sw : 0);
     const s = b8===0 ? newBar(nextT) : SECTIONS[secIdx];
     const c = curChord, sc = scalePcs(c);
     // ---- drums
     if (L.perk.on && s.perk){
       const dens = clamp(s.perk*(.3+M.ruch*.8), 0, 1.4);
-      if (L.perk.inst==='jazz'){
+      if (L.perk.inst==='zestaw') drumKit(t, b8, dens, s, e8);
+      else if (L.perk.inst==='jazz'){
         const ride = b8===0||b8===4 ? dens>.15 : b8===2||b8===6 ? dens>.05 : (b8===3||b8===7) ? dens>.55 && chance(.8) : false;
         if (ride) hit('talerz', chance(.85)?'suscymb1_hit_stick_pp1':'suscymb1_hit_stick_mp1', {bus:layerBus('perk'), when:t, gain:.13*(b8%4===2?1:.75)*(.7+M.nap*.5), dur:e8*3.5, rate:rnd(.98,1.02)});
         if ((b8===2||b8===6) && dens>.3) hit('hihat', pick(['hihat_close_rr1','hihat_close_rr2']), {bus:layerBus('perk'), when:t, gain:.25});
@@ -469,6 +481,31 @@ function schedule(){
   }
 }
 
+// ======================= drum kit (jazz ballad time) =======================
+const rr = (name, n) => `${name}_${1+Math.floor(Math.random()*n)}`;
+function kit(name, n, o){ hit('zestaw', rr(name, n), {bus:layerBus('perk'), ...o}); }
+function drumKit(t, b8, dens, s, e8){
+  const nap = M.nap, lastBar = secBar === s.bars;            // last bar of a section → small fill
+  // ride: spang-a-lang (1, 2, 2&, 3, 4, 4&) — softer and sparser with less movement
+  const rideOn = b8===0||b8===2||b8===4||b8===6 || ((b8===3||b8===7) && dens>.35 && chance(.85));
+  if (rideOn && dens>.1){
+    const acc = (b8===2||b8===6) ? 1 : (b8%2 ? .6 : .8);
+    kit(nap>.6 && chance(.4) ? 'ride_mp' : 'ride_pp', 4, {when:t+rnd(0,.006), gain:.32*acc*(.75+nap*.4), rate:rnd(.99,1.01)});
+    if (nap>.8 && b8===0 && chance(.15)) kit('ride_kopula', 3, {when:t, gain:.12});
+  }
+  // hi-hat foot on 2 and 4
+  if ((b8===2||b8===6) && dens>.2) kit('hihat_noga', 4, {when:t, gain:.35});
+  // kick: feathered, very soft on beats, a little push with tension
+  if (b8%2===0 && dens>.5 && chance(.25+nap*.3)) kit('stopa_p', 4, {when:t, gain:.22+nap*.12});
+  if (b8===0 && secBar===1 && dens>.3) kit(nap>.6?'stopa_f':'stopa_p', nap>.6?3:4, {when:t, gain:.35});
+  // snare: cross-stick on 4 when calm, ghost-note comping when busier
+  if (b8===6 && dens<=.6 && chance(.7)) kit('werbel_obrecz', 4, {when:t, gain:.25});
+  if (dens>.6 && b8%2===1 && chance(.15+nap*.2)) kit('werbel_ghost', 4, {when:t, gain:.18});
+  if (dens>.6 && (b8===3||b8===7) && chance(nap*.25)) kit('werbel_mp', 4, {when:t, gain:.22});
+  // fill into the next section
+  if (lastBar && dens>.35 && b8>=5){ kit(b8===7 ? 'werbel_mp' : 'werbel_ghost', 4, {when:t, gain:b8===7?.3:.2}); if (b8===6) kit('werbel_ghost',4,{when:t+e8*.5, gain:.18}); }
+}
+
 // ======================= play strip =======================
 let stripNotes=[];
 function buildStrip(){
@@ -501,7 +538,7 @@ function bindStrip(){
 
 // ======================= start / stop =======================
 // what each layer needs first (quiet layers), and what can follow later
-const FIRST = {tlo:['p'], bas:['p','mf'], akordy:['p','mf'], solo:['p','mf'], perk:null};
+const FIRST = {tlo:['mf'], bas:['p','mf'], akordy:['p','mf'], solo:['p','mf'], perk:null};
 async function loadLayer(id, quiet, all){ await Promise.all(layerInsts(id, L[id].inst).map(k=>loadInst(k, all ? null : FIRST[id], quiet))); }
 async function loadAll(){
   await loadLayer('tlo');                       // enough for the opening "Mgła"
@@ -513,6 +550,7 @@ async function loadAll(){
     } catch(e){} finally { $('status').textContent=''; }
   })();
 }
+document.addEventListener('visibilitychange', ()=>{ if (ctx && running && !document.hidden && ctx.state!=='running') ctx.resume(); });
 $('playBtn').onclick = async ()=>{
   initAudio(); await ctx.resume(); const b=$('playBtn');
   if (running){ running=false; clearInterval(timer); b.textContent='▶'; b.classList.remove('on'); $('sec').textContent='Pauza';
