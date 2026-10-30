@@ -116,22 +116,25 @@ function slice(sp, start, dur){
   const b=ctx.createBuffer(sp.numberOfChannels,n,sr); for(let c=0;c<sp.numberOfChannels;c++) b.copyToChannel(sp.getChannelData(c).subarray(a,a+n),c); return b;
 }
 function prep(b){ b._on=onsetOf(b); b._rms=rmsOf(b); return b; }
-async function loadInst(key, layersWanted){
+async function loadInst(key, layersWanted, quiet){
   if (!key || key.startsWith('syn_')) return;
   await loadManifest(); const I = MAN[key]; if (!I) return;
+  const core = SPRITE && I.type==='percussion' && I.core;
   const lays = I.type==='percussion' ? ['all'] : Object.keys(I.layers).filter(l=>!layersWanted || layersWanted.includes(l));
   const jobs = lays.map(l=>{
     const id = key+'|'+l; if (loading[id]) return loading[id];
-    const files = I.type==='percussion' ? I.sounds : Object.values(I.layers[l]).flat();
-    if (SPRITE){
+    const files = I.type==='percussion' ? (core ? core.sounds : I.sounds) : Object.values(I.layers[l]).flat();
+    if (core){
+      loading[id] = (sprites[core.sprite] ||= decode(core.sprite)).then(sp=>{ for (const f of files){ const [s,d]=core.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } });
+    } else if (SPRITE){
       loading[id] = (sprites[I.sprite[l]] ||= decode(I.sprite[l])).then(sp=>{ for (const f of files){ const [s,d]=I.seg[f]; buffers[`${key}/${f}`]=prep(slice(sp,s,d)); } });
     } else {
       loading[id] = Promise.all(files.map(f=>decode(`sample/${key}/${f}`).then(b=>{ buffers[`${key}/${f}`]=prep(b); })));
     }
     return loading[id];
   });
-  const st = $('status'); st.textContent = 'Wczytuję dźwięki…';
-  try { await Promise.all(jobs); } finally { st.textContent=''; }
+  const st = $('status'); if (!quiet) st.textContent = 'Wczytuję dźwięki…';
+  try { await Promise.all(jobs); } finally { if (!quiet) st.textContent=''; }
   if (I.type==='melodic' && !levels[key]){
     const L = levels[key] = {}, lv = I.lvl || {}, single = Object.keys(I.layers).length===1;
     if (Object.keys(lv).length){ const ref = lv.f ?? lv.mf ?? lv.p; for (const l in lv) L[l] = Math.pow(10, ((single?0:LAYER_DB[l]) - (lv[l]-ref))/20); }
@@ -283,7 +286,7 @@ function buildLayers(){
     const b=document.createElement('button'); b.className='tog on'; b.textContent='● '+d.name;
     b.onclick=()=>{ L[d.id].on=!L[d.id].on; b.classList.toggle('on',L[d.id].on); b.textContent=(L[d.id].on?'● ':'○ ')+d.name; if(!L[d.id].on) silence(d.id); };
     const s=document.createElement('select'); for (const [v,n] of d.opts){ const o=document.createElement('option'); o.value=v; o.textContent=n; s.appendChild(o); }
-    s.value=d.def; s.onchange=async()=>{ silence(d.id); L[d.id].inst=s.value; if (ctx) await Promise.all(layerInsts(d.id,s.value).map(k=>loadInst(k))); if (d.id==='solo') buildStrip(); };
+    s.value=d.def; s.onchange=async()=>{ silence(d.id); L[d.id].inst=s.value; if (d.id==='solo') buildStrip(); if (ctx){ await loadLayer(d.id); loadLayer(d.id, true, true); } };
     row.append(b,s); box.appendChild(row);
   }
 }
@@ -463,7 +466,7 @@ function bindStrip(){
   const play = (k, vel, legato) => { userUntil = ctx.currentTime + 60/tempo()*8; return noteOn(solo(), +k.dataset.m, {vel, legato, scoop: !legato && MONO.has(solo()) ? .5 : 0}); };
   el.addEventListener('pointerdown', async e=>{
     const k=e.target.closest('.k'); if(!k) return; e.preventDefault();
-    initAudio(); await ctx.resume(); await loadInst(solo());
+    initAudio(); await ctx.resume(); await loadLayer('solo');
     const vel=.2+velAt(k,e.clientY)*.8, v=play(k, vel, false);
     k.classList.add('hit'); heldU.set(e.pointerId,{v,k,vel}); try{ el.setPointerCapture(e.pointerId) }catch(_){}
   });
@@ -477,11 +480,18 @@ function bindStrip(){
 }
 
 // ======================= start / stop =======================
+// what each layer needs first (quiet layers), and what can follow later
+const FIRST = {tlo:['p'], bas:['p','mf'], akordy:['p','mf'], solo:['p','mf'], perk:null};
+async function loadLayer(id, quiet, all){ await Promise.all(layerInsts(id, L[id].inst).map(k=>loadInst(k, all ? null : FIRST[id], quiet))); }
 async function loadAll(){
-  const jobs=[];
-  for (const d of LAYER_DEF) for (const k of layerInsts(d.id, L[d.id].inst)) jobs.push(loadInst(k));
-  jobs.push(loadInst('mark_tree'));
-  await Promise.all(jobs);
+  await loadLayer('tlo');                       // enough for the opening "Mgła"
+  (async ()=>{                                  // everything else streams in while the music already plays
+    $('status').textContent = 'Dociągam instrumenty…';
+    try {
+      await loadLayer('bas', true); await loadLayer('akordy', true); await loadLayer('perk', true); await loadInst('mark_tree', null, true);
+      await loadLayer('solo', true); await loadLayer('solo', true, true);
+    } catch(e){} finally { $('status').textContent=''; }
+  })();
 }
 $('playBtn').onclick = async ()=>{
   initAudio(); await ctx.resume(); const b=$('playBtn');
