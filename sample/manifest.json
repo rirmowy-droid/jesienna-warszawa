@@ -1,0 +1,2056 @@
+{
+ "pianino": {
+  "label": "Pianino (Yamaha)",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "24": [
+     "24_p.mp3"
+    ],
+    "36": [
+     "36_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "72": [
+     "72_p.mp3"
+    ],
+    "84": [
+     "84_p.mp3"
+    ],
+    "31": [
+     "31_p.mp3"
+    ],
+    "43": [
+     "43_p.mp3"
+    ],
+    "55": [
+     "55_p.mp3"
+    ],
+    "67": [
+     "67_p.mp3"
+    ],
+    "79": [
+     "79_p.mp3"
+    ],
+    "91": [
+     "91_p.mp3"
+    ]
+   },
+   "mf": {
+    "24": [
+     "24_mf.mp3"
+    ],
+    "36": [
+     "36_mf.mp3"
+    ],
+    "48": [
+     "48_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "72": [
+     "72_mf.mp3"
+    ],
+    "84": [
+     "84_mf.mp3"
+    ],
+    "96": [
+     "96_mf.mp3"
+    ],
+    "31": [
+     "31_mf.mp3"
+    ],
+    "43": [
+     "43_mf.mp3"
+    ],
+    "55": [
+     "55_mf.mp3"
+    ],
+    "67": [
+     "67_mf.mp3"
+    ],
+    "79": [
+     "79_mf.mp3"
+    ],
+    "91": [
+     "91_mf.mp3"
+    ]
+   },
+   "f": {
+    "24": [
+     "24_f.mp3"
+    ],
+    "36": [
+     "36_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "72": [
+     "72_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ],
+    "96": [
+     "96_f.mp3"
+    ],
+    "31": [
+     "31_f.mp3"
+    ],
+    "43": [
+     "43_f.mp3"
+    ],
+    "55": [
+     "55_f.mp3"
+    ],
+    "67": [
+     "67_f.mp3"
+    ],
+    "79": [
+     "79_f.mp3"
+    ],
+    "91": [
+     "91_f.mp3"
+    ]
+   }
+  }
+ },
+ "rhodes": {
+  "label": "Rhodes (jRhodes3d)",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "29": [
+     "29_p.mp3"
+    ],
+    "35": [
+     "35_p.mp3"
+    ],
+    "40": [
+     "40_p.mp3"
+    ],
+    "45": [
+     "45_p.mp3"
+    ],
+    "50": [
+     "50_p.mp3"
+    ],
+    "55": [
+     "55_p.mp3"
+    ],
+    "59": [
+     "59_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "65": [
+     "65_p.mp3"
+    ],
+    "71": [
+     "71_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ]
+   },
+   "mf": {
+    "29": [
+     "29_mf.mp3"
+    ],
+    "35": [
+     "35_mf.mp3"
+    ],
+    "40": [
+     "40_mf.mp3"
+    ],
+    "45": [
+     "45_mf.mp3"
+    ],
+    "50": [
+     "50_mf.mp3"
+    ],
+    "55": [
+     "55_mf.mp3"
+    ],
+    "59": [
+     "59_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "65": [
+     "65_mf.mp3"
+    ]
+   },
+   "f": {
+    "29": [
+     "29_f.mp3"
+    ],
+    "35": [
+     "35_f.mp3"
+    ],
+    "40": [
+     "40_f.mp3"
+    ],
+    "45": [
+     "45_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "55": [
+     "55_f.mp3"
+    ],
+    "59": [
+     "59_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "65": [
+     "65_f.mp3"
+    ],
+    "71": [
+     "71_f.mp3"
+    ],
+    "76": [
+     "76_f.mp3"
+    ],
+    "81": [
+     "81_f.mp3"
+    ],
+    "86": [
+     "86_f.mp3"
+    ],
+    "91": [
+     "91_f.mp3"
+    ],
+    "96": [
+     "96_f.mp3"
+    ]
+   }
+  }
+ },
+ "fm_piano": {
+  "label": "FM Piano (TX81Z)",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "12": [
+     "12_p.mp3"
+    ],
+    "24": [
+     "24_p.mp3"
+    ],
+    "36": [
+     "36_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "72": [
+     "72_p.mp3"
+    ],
+    "84": [
+     "84_p.mp3"
+    ],
+    "96": [
+     "96_p.mp3"
+    ],
+    "16": [
+     "16_p.mp3"
+    ],
+    "28": [
+     "28_p.mp3"
+    ],
+    "40": [
+     "40_p.mp3"
+    ],
+    "52": [
+     "52_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ],
+    "88": [
+     "88_p.mp3"
+    ],
+    "20": [
+     "20_p.mp3"
+    ],
+    "32": [
+     "32_p.mp3"
+    ],
+    "44": [
+     "44_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ],
+    "80": [
+     "80_p.mp3"
+    ],
+    "92": [
+     "92_p.mp3"
+    ]
+   },
+   "mf": {
+    "12": [
+     "12_mf.mp3"
+    ],
+    "24": [
+     "24_mf.mp3"
+    ],
+    "36": [
+     "36_mf.mp3"
+    ],
+    "48": [
+     "48_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "72": [
+     "72_mf.mp3"
+    ],
+    "84": [
+     "84_mf.mp3"
+    ],
+    "96": [
+     "96_mf.mp3"
+    ],
+    "16": [
+     "16_mf.mp3"
+    ],
+    "28": [
+     "28_mf.mp3"
+    ],
+    "40": [
+     "40_mf.mp3"
+    ],
+    "52": [
+     "52_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "76": [
+     "76_mf.mp3"
+    ],
+    "88": [
+     "88_mf.mp3"
+    ],
+    "20": [
+     "20_mf.mp3"
+    ],
+    "32": [
+     "32_mf.mp3"
+    ],
+    "44": [
+     "44_mf.mp3"
+    ],
+    "56": [
+     "56_mf.mp3"
+    ],
+    "68": [
+     "68_mf.mp3"
+    ],
+    "80": [
+     "80_mf.mp3"
+    ],
+    "92": [
+     "92_mf.mp3"
+    ]
+   },
+   "f": {
+    "12": [
+     "12_f.mp3"
+    ],
+    "24": [
+     "24_f.mp3"
+    ],
+    "36": [
+     "36_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "72": [
+     "72_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ],
+    "96": [
+     "96_f.mp3"
+    ],
+    "16": [
+     "16_f.mp3"
+    ],
+    "28": [
+     "28_f.mp3"
+    ],
+    "40": [
+     "40_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "76": [
+     "76_f.mp3"
+    ],
+    "88": [
+     "88_f.mp3"
+    ],
+    "20": [
+     "20_f.mp3"
+    ],
+    "32": [
+     "32_f.mp3"
+    ],
+    "44": [
+     "44_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ],
+    "80": [
+     "80_f.mp3"
+    ],
+    "92": [
+     "92_f.mp3"
+    ]
+   }
+  }
+ },
+ "wibrafon": {
+  "label": "Wibrafon",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "57": [
+     "57_p.mp3"
+    ],
+    "81": [
+     "81_p.mp3"
+    ],
+    "71": [
+     "71_p.mp3"
+    ],
+    "84": [
+     "84_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "88": [
+     "88_p.mp3"
+    ],
+    "53": [
+     "53_p.mp3"
+    ],
+    "77": [
+     "77_p.mp3"
+    ],
+    "67": [
+     "67_p.mp3"
+    ]
+   },
+   "mf": {
+    "57": [
+     "57_mf.mp3"
+    ],
+    "81": [
+     "81_mf.mp3"
+    ],
+    "71": [
+     "71_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "84": [
+     "84_mf.mp3"
+    ],
+    "74": [
+     "74_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "88": [
+     "88_mf.mp3"
+    ],
+    "53": [
+     "53_mf.mp3"
+    ],
+    "77": [
+     "77_mf.mp3"
+    ],
+    "67": [
+     "67_mf.mp3"
+    ]
+   },
+   "f": {
+    "57": [
+     "57_f.mp3"
+    ],
+    "81": [
+     "81_f.mp3"
+    ],
+    "71": [
+     "71_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "88": [
+     "88_f.mp3"
+    ],
+    "53": [
+     "53_f.mp3"
+    ],
+    "77": [
+     "77_f.mp3"
+    ],
+    "67": [
+     "67_f.mp3"
+    ]
+   }
+  }
+ },
+ "wibrafon_smyczek": {
+  "label": "Wibrafon smyczkiem",
+  "type": "melodic",
+  "layers": {
+   "mf": {
+    "57": [
+     "57_mf.mp3"
+    ],
+    "81": [
+     "81_mf.mp3"
+    ],
+    "74": [
+     "74_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "88": [
+     "88_mf.mp3"
+    ],
+    "67": [
+     "67_mf.mp3"
+    ]
+   }
+  }
+ },
+ "dzwonki": {
+  "label": "Dzwonki ręczne",
+  "type": "melodic",
+  "layers": {
+   "mf": {
+    "70": [
+     "70_mf.mp3"
+    ],
+    "94": [
+     "94_mf.mp3"
+    ],
+    "81": [
+     "81_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "72": [
+     "72_mf.mp3"
+    ],
+    "84": [
+     "84_mf.mp3"
+    ],
+    "96": [
+     "96_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "74": [
+     "74_mf.mp3"
+    ],
+    "86": [
+     "86_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "76": [
+     "76_mf.mp3"
+    ],
+    "88": [
+     "88_mf.mp3"
+    ],
+    "66": [
+     "66_mf.mp3"
+    ],
+    "78": [
+     "78_mf.mp3"
+    ],
+    "90": [
+     "90_mf.mp3"
+    ],
+    "68": [
+     "68_mf.mp3"
+    ],
+    "80": [
+     "80_mf.mp3"
+    ],
+    "92": [
+     "92_mf.mp3"
+    ]
+   }
+  }
+ },
+ "kieliszki": {
+  "label": "Kieliszki (pocierane)",
+  "type": "melodic",
+  "layers": {
+   "mf": {
+    "75": [
+     "75_mf.mp3"
+    ],
+    "78": [
+     "78_mf.mp3"
+    ],
+    "82": [
+     "82_mf.mp3"
+    ],
+    "86": [
+     "86_mf.mp3"
+    ]
+   }
+  }
+ },
+ "sax_tenor": {
+  "label": "Saksofon tenorowy",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "46": [
+     "46_p.mp3"
+    ],
+    "58": [
+     "58_p.mp3"
+    ],
+    "70": [
+     "70_p.mp3"
+    ],
+    "82": [
+     "82_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "72": [
+     "72_p.mp3"
+    ],
+    "84": [
+     "84_p.mp3"
+    ],
+    "50": [
+     "50_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "86": [
+     "86_p.mp3"
+    ],
+    "52": [
+     "52_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ],
+    "88": [
+     "88_p.mp3"
+    ],
+    "54": [
+     "54_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "78": [
+     "78_p.mp3"
+    ],
+    "44": [
+     "44_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ],
+    "80": [
+     "80_p.mp3"
+    ]
+   },
+   "f": {
+    "46": [
+     "46_f.mp3"
+    ],
+    "58": [
+     "58_f.mp3"
+    ],
+    "70": [
+     "70_f.mp3"
+    ],
+    "82": [
+     "82_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "72": [
+     "72_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "86": [
+     "86_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "76": [
+     "76_f.mp3"
+    ],
+    "88": [
+     "88_f.mp3"
+    ],
+    "54": [
+     "54_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "78": [
+     "78_f.mp3"
+    ],
+    "44": [
+     "44_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ],
+    "80": [
+     "80_f.mp3"
+    ]
+   }
+  }
+ },
+ "sax_tenor_krotkie": {
+  "label": "Saksofon tenorowy – krótkie",
+  "type": "melodic",
+  "layers": {
+   "p": {
+    "57": [
+     "57_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ],
+    "77": [
+     "77_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ]
+   },
+   "f": {
+    "48": [
+     "48_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "88": [
+     "88_f.mp3"
+    ],
+    "77": [
+     "77_f.mp3"
+    ],
+    "44": [
+     "44_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ]
+   }
+  }
+ },
+ "kontrabas": {
+  "label": "Kontrabas pizzicato",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "45": [
+     "45_f_rr1.mp3",
+     "45_f_rr2.mp3"
+    ],
+    "57": [
+     "57_f_rr1.mp3",
+     "57_f_rr2.mp3"
+    ],
+    "24": [
+     "24_f_rr1.mp3",
+     "24_f_rr2.mp3"
+    ],
+    "48": [
+     "48_f_rr1.mp3",
+     "48_f_rr2.mp3"
+    ],
+    "38": [
+     "38_f_rr1.mp3",
+     "38_f_rr2.mp3"
+    ],
+    "52": [
+     "52_f_rr1.mp3",
+     "52_f_rr2.mp3"
+    ],
+    "41": [
+     "41_f_rr1.mp3",
+     "41_f_rr2.mp3"
+    ],
+    "31": [
+     "31_f_rr1.mp3",
+     "31_f_rr2.mp3"
+    ],
+    "55": [
+     "55_f_rr1.mp3",
+     "55_f_rr2.mp3"
+    ]
+   },
+   "mf": {
+    "45": [
+     "45_mf_rr1.mp3",
+     "45_mf_rr2.mp3"
+    ],
+    "57": [
+     "57_mf_rr1.mp3",
+     "57_mf_rr2.mp3"
+    ],
+    "24": [
+     "24_mf_rr1.mp3",
+     "24_mf_rr2.mp3"
+    ],
+    "48": [
+     "48_mf_rr1.mp3",
+     "48_mf_rr2.mp3"
+    ],
+    "38": [
+     "38_mf_rr1.mp3",
+     "38_mf_rr2.mp3"
+    ],
+    "52": [
+     "52_mf_rr1.mp3",
+     "52_mf_rr2.mp3"
+    ],
+    "41": [
+     "41_mf_rr1.mp3",
+     "41_mf_rr2.mp3"
+    ],
+    "31": [
+     "31_mf_rr1.mp3",
+     "31_mf_rr2.mp3"
+    ],
+    "55": [
+     "55_mf_rr1.mp3",
+     "55_mf_rr2.mp3"
+    ]
+   },
+   "p": {
+    "45": [
+     "45_p_rr1.mp3",
+     "45_p_rr2.mp3"
+    ],
+    "57": [
+     "57_p_rr1.mp3",
+     "57_p_rr2.mp3"
+    ],
+    "24": [
+     "24_p_rr1.mp3",
+     "24_p_rr2.mp3"
+    ],
+    "48": [
+     "48_p_rr1.mp3",
+     "48_p_rr2.mp3"
+    ],
+    "38": [
+     "38_p_rr1.mp3",
+     "38_p_rr2.mp3"
+    ],
+    "52": [
+     "52_p_rr1.mp3",
+     "52_p_rr2.mp3"
+    ],
+    "41": [
+     "41_p_rr1.mp3",
+     "41_p_rr2.mp3"
+    ],
+    "31": [
+     "31_p_rr1.mp3",
+     "31_p_rr2.mp3"
+    ],
+    "55": [
+     "55_p_rr1.mp3",
+     "55_p_rr2.mp3"
+    ]
+   }
+  }
+ },
+ "chor_alty_ah": {
+  "label": "Chór – alty „ah”",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "58": [
+     "58_f.mp3"
+    ],
+    "70": [
+     "70_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "72": [
+     "72_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "76": [
+     "76_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ]
+   },
+   "mf": {
+    "58": [
+     "58_mf.mp3"
+    ],
+    "70": [
+     "70_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "72": [
+     "72_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "74": [
+     "74_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "76": [
+     "76_mf.mp3"
+    ],
+    "66": [
+     "66_mf.mp3"
+    ],
+    "68": [
+     "68_mf.mp3"
+    ]
+   },
+   "p": {
+    "58": [
+     "58_p.mp3"
+    ],
+    "70": [
+     "70_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "72": [
+     "72_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ]
+   }
+  }
+ },
+ "chor_alty_oo": {
+  "label": "Chór – alty „oo”",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "58": [
+     "58_f.mp3"
+    ],
+    "70": [
+     "70_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "72": [
+     "72_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "76": [
+     "76_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ]
+   },
+   "mf": {
+    "70": [
+     "70_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "72": [
+     "72_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "74": [
+     "74_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "76": [
+     "76_mf.mp3"
+    ],
+    "66": [
+     "66_mf.mp3"
+    ],
+    "68": [
+     "68_mf.mp3"
+    ]
+   },
+   "p": {
+    "58": [
+     "58_p.mp3"
+    ],
+    "70": [
+     "70_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "72": [
+     "72_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "76": [
+     "76_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ]
+   }
+  }
+ },
+ "chor_tenory_ah": {
+  "label": "Chór – tenory „ah”",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "58": [
+     "58_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "54": [
+     "54_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ]
+   },
+   "mf": {
+    "58": [
+     "58_mf.mp3"
+    ],
+    "48": [
+     "48_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "50": [
+     "50_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "52": [
+     "52_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "54": [
+     "54_mf.mp3"
+    ],
+    "66": [
+     "66_mf.mp3"
+    ],
+    "56": [
+     "56_mf.mp3"
+    ]
+   },
+   "p": {
+    "58": [
+     "58_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "50": [
+     "50_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "52": [
+     "52_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "54": [
+     "54_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ]
+   }
+  }
+ },
+ "chor_tenory_oo": {
+  "label": "Chór – tenory „oo”",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "58": [
+     "58_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "54": [
+     "54_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ]
+   },
+   "mf": {
+    "58": [
+     "58_mf.mp3"
+    ],
+    "48": [
+     "48_mf.mp3"
+    ],
+    "60": [
+     "60_mf.mp3"
+    ],
+    "50": [
+     "50_mf.mp3"
+    ],
+    "62": [
+     "62_mf.mp3"
+    ],
+    "52": [
+     "52_mf.mp3"
+    ],
+    "64": [
+     "64_mf.mp3"
+    ],
+    "54": [
+     "54_mf.mp3"
+    ],
+    "66": [
+     "66_mf.mp3"
+    ],
+    "56": [
+     "56_mf.mp3"
+    ]
+   },
+   "p": {
+    "58": [
+     "58_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "50": [
+     "50_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "52": [
+     "52_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "54": [
+     "54_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ]
+   }
+  }
+ },
+ "hihat": {
+  "label": "Hi-hat",
+  "type": "percussion",
+  "sounds": [
+   "hihat_close_rr1.mp3",
+   "hihat_close_rr2.mp3",
+   "hihat_hitc_v1_rr1.mp3",
+   "hihat_hitc_v1_rr2.mp3",
+   "hihat_hitc_v2_rr1.mp3",
+   "hihat_hitc_v2_rr2.mp3",
+   "hihat_hitc_v3_rr1.mp3",
+   "hihat_hitc_v3_rr2.mp3",
+   "hihat_hitc_v4_rr1.mp3",
+   "hihat_hitc_v4_rr2.mp3",
+   "hihat_hitloose_rr1.mp3",
+   "hihat_hitloose_rr2.mp3",
+   "hihat_hitoc_rr5.mp3",
+   "hihat_hito_rr1.mp3",
+   "hihat_hito_rr2.mp3"
+  ]
+ },
+ "talerz": {
+  "label": "Talerz zawieszony (uderzenia, smyczek, crescendo, tremolo)",
+  "type": "percussion",
+  "sounds": [
+   "suscymb1_bow_13.mp3",
+   "suscymb1_bow_17.mp3",
+   "suscymb1_bow_20.mp3",
+   "suscymb1_bow_7.mp3",
+   "suscymb1_cresc_1.5s.mp3",
+   "suscymb1_cresc_2s.mp3",
+   "suscymb1_cresc_4s.mp3",
+   "suscymb1_cresc_7.5s.mp3",
+   "suscymb1_hit_bell_fff1.mp3",
+   "suscymb1_hit_bell_mf1.mp3",
+   "suscymb1_hit_bell_pp1.mp3",
+   "suscymb1_hit_f1.mp3",
+   "suscymb1_hit_fff1.mp3",
+   "suscymb1_hit_mp1.mp3",
+   "suscymb1_hit_pp1.mp3",
+   "suscymb1_hit_stick_f1.mp3",
+   "suscymb1_hit_stick_mp1.mp3",
+   "suscymb1_hit_stick_pp1.mp3",
+   "suscymb1_roll_f1_nloop.mp3",
+   "suscymb1_roll_ff2_nloop.mp3",
+   "suscymb1_roll_mp1_nloop.mp3",
+   "suscymb1_scrape_1.mp3"
+  ]
+ },
+ "werbel": {
+  "label": "Werbel",
+  "type": "percussion",
+  "sounds": [
+   "snare2_hitns_v2_rr1.mp3",
+   "snare2_hitns_v4_rr1.mp3",
+   "snare2_hitns_v5_rr1.mp3",
+   "snare2_hitns_v6_rr1.mp3",
+   "snare2_hitsn_v3_rr1.mp3",
+   "snare2_hitsn_v5_rr1.mp3",
+   "snare2_hitsn_v6_rr1.mp3",
+   "snare2_hitsn_v7_rr1.mp3",
+   "snare2_hitsn_v9_rr1.mp3",
+   "snare2_rollns_v2_rr1.mp3",
+   "snare2_rollns_v3_rr1.mp3",
+   "snare2_rollns_v4_rr1.mp3",
+   "snare2_rollns_v5_rr1.mp3",
+   "snare2_rollsn_v2_rr1.mp3",
+   "snare2_rollsn_v4_rr1.mp3",
+   "snare2_stick_v1_rr1.mp3",
+   "snare2_taps_v4_rr1.mp3"
+  ]
+ },
+ "beben": {
+  "label": "Bęben basowy (orkiestrowy)",
+  "type": "percussion",
+  "sounds": [
+   "bassdrum_cresc_med.mp3",
+   "bassdrum_cresc_short.mp3",
+   "bassdrum_hit_f.mp3",
+   "bassdrum_hit_ff.mp3",
+   "bassdrum_hit_mf1.mp3",
+   "bassdrum_hit_mf2.mp3",
+   "bassdrum_hit_mp1.mp3",
+   "bassdrum_hit_mp2.mp3",
+   "bassdrum_hit_pp1.mp3",
+   "bassdrum_hit_pp2.mp3",
+   "bassdrum_roll_fast_f.mp3",
+   "bassdrum_roll_fast_mf.mp3",
+   "bassdrum_roll_fast_mp.mp3",
+   "bassdrum_roll_fast_pp.mp3",
+   "bassdrum_roll_ff.mp3",
+   "bassdrum_roll_mf.mp3",
+   "bassdrum_roll_mp.mp3",
+   "bassdrum_roll_pp.mp3",
+   "bassdrum_rub10.mp3",
+   "bassdrum_rub12.mp3",
+   "bassdrum_rub2.mp3",
+   "bassdrum_rub7.mp3"
+  ]
+ },
+ "tom": {
+  "label": "Tom (pałeczka i pałka filcowa)",
+  "type": "percussion",
+  "sounds": [
+   "tomh_hitm_v2_rr1.mp3",
+   "tomh_hitm_v2_rr2.mp3",
+   "tomh_hitm_v3_rr1.mp3",
+   "tomh_hitm_v3_rr2.mp3",
+   "tomh_hitm_v4_rr1.mp3",
+   "tomh_hitm_v4_rr2.mp3",
+   "tomh_rollm_v1_rr1.mp3",
+   "tomh_rollm_v2_rr1.mp3",
+   "tomh_hits_v2_rr1.mp3",
+   "tomh_hits_v2_rr2.mp3",
+   "tomh_hits_v3_rr1.mp3",
+   "tomh_hits_v3_rr2.mp3",
+   "tomh_hits_v4_rr1.mp3",
+   "tomh_hits_v4_rr2.mp3",
+   "tomh_rolls_v1_rr1.mp3",
+   "tomh_rolls_v2_rr1.mp3",
+   "tomh_rimfls_rr2.mp3",
+   "tomh_rimfls_rr4.mp3",
+   "tomh_rims_v2_rr1.mp3",
+   "tomh_rims_v2_rr2.mp3",
+   "tomh_rims_v4_rr1.mp3",
+   "tomh_rims_v4_rr2.mp3"
+  ]
+ },
+ "shaker": {
+  "label": "Shaker",
+  "type": "percussion",
+  "sounds": [
+   "mid_shakerdouble_down_rr1.mp3",
+   "mid_shakerdouble_down_rr2.mp3",
+   "mid_shakerdouble_up_rr1.mp3",
+   "mid_shakerdouble_up_rr2.mp3",
+   "mid_shakerhighfaster_down_rr1.mp3",
+   "mid_shakerhighfaster_down_rr2.mp3",
+   "mid_shakerhighfaster_up_rr1.mp3",
+   "mid_shakerhighfaster_up_rr2.mp3",
+   "mid_shakerlowfaster_down_rr1.mp3",
+   "mid_shakerlowfaster_down_rr2.mp3",
+   "mid_shakerlowfaster_up_rr1.mp3",
+   "mid_shakerlowfaster_up_rr2.mp3",
+   "mid_shaker_roll_fast_rr1.mp3",
+   "mid_shaker_roll_fast_rr2.mp3",
+   "mid_shaker_slap_rr1.mp3",
+   "mid_shaker_slap_rr2.mp3"
+  ]
+ },
+ "mark_tree": {
+  "label": "Mark tree (dzwoneczki)",
+  "type": "percussion",
+  "sounds": [
+   "windchimes_asc1.mp3",
+   "windchimes_desc1.mp3",
+   "windchimes_fastasc1.mp3",
+   "windchimes_random.mp3",
+   "windchimes_slowasc1.mp3",
+   "windchimes_slowdesc1.mp3"
+  ]
+ },
+ "kontrabas_szumy": {
+  "label": "Kontrabas – stuki i szumy",
+  "type": "percussion",
+  "sounds": [
+   "pizz_noise_body_slap_1.mp3",
+   "pizz_noise_body_slap_2.mp3",
+   "pizz_noise_body_slap_3.mp3",
+   "pizz_noise_body_slap_4.mp3",
+   "pizz_noise_body_slap_5.mp3",
+   "pizz_noise_body_slap_high_1.mp3",
+   "pizz_noise_body_slap_high_2.mp3",
+   "pizz_noise_body_slap_high_3.mp3",
+   "pizz_noise_body_slap_high_4.mp3",
+   "pizz_noise_body_slap_low_1.mp3",
+   "pizz_noise_body_slap_low_2.mp3",
+   "pizz_noise_click.mp3",
+   "pizz_noise_click_2.mp3",
+   "pizz_noise_click_3.mp3",
+   "pizz_noise_high_thump.mp3",
+   "pizz_noise_high_thump_2.mp3",
+   "pizz_noise_low_thump_1.mp3",
+   "pizz_noise_low_thump_2.mp3",
+   "pizz_noise_low_thump_3.mp3",
+   "pizz_noise_low_thump_4.mp3",
+   "pizz_noise_mute_a.mp3",
+   "pizz_noise_mute_a2.mp3",
+   "pizz_noise_mute_c.mp3",
+   "pizz_noise_mute_c3.mp3",
+   "pizz_noise_mute_c_2.mp3",
+   "pizz_noise_mute_d.mp3",
+   "pizz_noise_mute_d2.mp3",
+   "pizz_noise_mute_d3.mp3",
+   "pizz_noise_mute_d4.mp3",
+   "pizz_noise_mute_g.mp3",
+   "pizz_noise_mute_g2.mp3",
+   "pizz_noise_mute_g3.mp3",
+   "pizz_noise_mute_g4.mp3",
+   "pizz_noise_set_bass_on_floor.mp3",
+   "pizz_noise_slap_1.mp3",
+   "pizz_noise_slap_2.mp3",
+   "pizz_noise_slap_3.mp3",
+   "pizz_noise_slap_knuckle_1.mp3",
+   "pizz_noise_slap_knuckle_2.mp3",
+   "pizz_noise_slap_knuckle_3.mp3",
+   "pizz_noise_slap_knuckle_4.mp3",
+   "pizz_noise_slap_resp_1.mp3",
+   "pizz_noise_slap_resp_2.mp3",
+   "pizz_noise_slap_resp_3.mp3",
+   "pizz_noise_slap_resp_4.mp3",
+   "pizz_noise_strum_1.mp3",
+   "pizz_noise_strum_2.mp3",
+   "pizz_noise_strum_long_1.mp3",
+   "pizz_noise_strum_long_2.mp3",
+   "pizz_noise_strum_long_3.mp3",
+   "pizz_noise_strum_long_4.mp3",
+   "pizz_noise_strum_long_5.mp3",
+   "pizz_noise_strum_long_extra.mp3",
+   "pizz_noise_strum_loud_1.mp3",
+   "pizz_noise_strum_loud_2.mp3",
+   "pizz_noise_super_d.mp3",
+   "pizz_noise_super_d_2.mp3",
+   "pizz_noise_super_d_3.mp3"
+  ]
+ },
+ "sax_baryton": {
+  "label": "Saksofon barytonowy (długie, zapętlone)",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "37": [
+     "37_f.mp3"
+    ],
+    "38": [
+     "38_f.mp3"
+    ],
+    "39": [
+     "39_f.mp3"
+    ],
+    "40": [
+     "40_f.mp3"
+    ],
+    "41": [
+     "41_f.mp3"
+    ],
+    "42": [
+     "42_f.mp3"
+    ],
+    "43": [
+     "43_f.mp3"
+    ],
+    "44": [
+     "44_f.mp3"
+    ],
+    "45": [
+     "45_f.mp3"
+    ],
+    "46": [
+     "46_f.mp3"
+    ],
+    "47": [
+     "47_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "49": [
+     "49_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "51": [
+     "51_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "53": [
+     "53_f.mp3"
+    ],
+    "54": [
+     "54_f.mp3"
+    ],
+    "55": [
+     "55_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ],
+    "57": [
+     "57_f.mp3"
+    ],
+    "58": [
+     "58_f.mp3"
+    ],
+    "59": [
+     "59_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "61": [
+     "61_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "63": [
+     "63_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "65": [
+     "65_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "67": [
+     "67_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ]
+   },
+   "p": {
+    "37": [
+     "37_p.mp3"
+    ],
+    "38": [
+     "38_p.mp3"
+    ],
+    "39": [
+     "39_p.mp3"
+    ],
+    "40": [
+     "40_p.mp3"
+    ],
+    "41": [
+     "41_p.mp3"
+    ],
+    "42": [
+     "42_p.mp3"
+    ],
+    "43": [
+     "43_p.mp3"
+    ],
+    "44": [
+     "44_p.mp3"
+    ],
+    "45": [
+     "45_p.mp3"
+    ],
+    "46": [
+     "46_p.mp3"
+    ],
+    "47": [
+     "47_p.mp3"
+    ],
+    "48": [
+     "48_p.mp3"
+    ],
+    "49": [
+     "49_p.mp3"
+    ],
+    "50": [
+     "50_p.mp3"
+    ],
+    "51": [
+     "51_p.mp3"
+    ],
+    "52": [
+     "52_p.mp3"
+    ],
+    "53": [
+     "53_p.mp3"
+    ],
+    "54": [
+     "54_p.mp3"
+    ],
+    "55": [
+     "55_p.mp3"
+    ],
+    "56": [
+     "56_p.mp3"
+    ],
+    "57": [
+     "57_p.mp3"
+    ],
+    "58": [
+     "58_p.mp3"
+    ],
+    "59": [
+     "59_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "61": [
+     "61_p.mp3"
+    ],
+    "62": [
+     "62_p.mp3"
+    ],
+    "63": [
+     "63_p.mp3"
+    ],
+    "64": [
+     "64_p.mp3"
+    ],
+    "65": [
+     "65_p.mp3"
+    ],
+    "66": [
+     "66_p.mp3"
+    ],
+    "67": [
+     "67_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ]
+   }
+  }
+ },
+ "sax_baryton_krotkie": {
+  "label": "Saksofon barytonowy – krótkie",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "37": [
+     "37_f.mp3"
+    ],
+    "38": [
+     "38_f.mp3"
+    ],
+    "39": [
+     "39_f.mp3"
+    ],
+    "40": [
+     "40_f.mp3"
+    ],
+    "41": [
+     "41_f.mp3"
+    ],
+    "42": [
+     "42_f.mp3"
+    ],
+    "43": [
+     "43_f.mp3"
+    ],
+    "44": [
+     "44_f.mp3"
+    ],
+    "45": [
+     "45_f.mp3"
+    ],
+    "46": [
+     "46_f.mp3"
+    ],
+    "47": [
+     "47_f.mp3"
+    ],
+    "48": [
+     "48_f.mp3"
+    ],
+    "49": [
+     "49_f.mp3"
+    ],
+    "50": [
+     "50_f.mp3"
+    ],
+    "51": [
+     "51_f.mp3"
+    ],
+    "52": [
+     "52_f.mp3"
+    ],
+    "53": [
+     "53_f.mp3"
+    ],
+    "54": [
+     "54_f.mp3"
+    ],
+    "55": [
+     "55_f.mp3"
+    ],
+    "56": [
+     "56_f.mp3"
+    ],
+    "57": [
+     "57_f.mp3"
+    ],
+    "58": [
+     "58_f.mp3"
+    ],
+    "59": [
+     "59_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "61": [
+     "61_f.mp3"
+    ],
+    "62": [
+     "62_f.mp3"
+    ],
+    "63": [
+     "63_f.mp3"
+    ],
+    "64": [
+     "64_f.mp3"
+    ],
+    "65": [
+     "65_f.mp3"
+    ],
+    "66": [
+     "66_f.mp3"
+    ],
+    "67": [
+     "67_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ]
+   }
+  }
+ },
+ "trabka": {
+  "label": "Trąbka",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "53": [
+     "53_f.mp3"
+    ],
+    "57": [
+     "57_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "63": [
+     "63_f.mp3"
+    ],
+    "67": [
+     "67_f.mp3"
+    ],
+    "70": [
+     "70_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "77": [
+     "77_f.mp3"
+    ],
+    "81": [
+     "81_f.mp3"
+    ],
+    "84": [
+     "84_f.mp3"
+    ]
+   },
+   "p": {
+    "53": [
+     "53_p.mp3"
+    ],
+    "57": [
+     "57_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "63": [
+     "63_p.mp3"
+    ],
+    "67": [
+     "67_p.mp3"
+    ],
+    "70": [
+     "70_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "77": [
+     "77_p.mp3"
+    ],
+    "81": [
+     "81_p.mp3"
+    ],
+    "84": [
+     "84_p.mp3"
+    ]
+   }
+  }
+ },
+ "trabka_tlumik": {
+  "label": "Trąbka z tłumikiem harmon",
+  "type": "melodic",
+  "layers": {
+   "f": {
+    "58": [
+     "58_f.mp3"
+    ],
+    "60": [
+     "60_f.mp3"
+    ],
+    "63": [
+     "63_f.mp3"
+    ],
+    "68": [
+     "68_f.mp3"
+    ],
+    "70": [
+     "70_f.mp3"
+    ],
+    "74": [
+     "74_f.mp3"
+    ],
+    "77": [
+     "77_f.mp3"
+    ],
+    "81": [
+     "81_f.mp3"
+    ]
+   },
+   "p": {
+    "58": [
+     "58_p.mp3"
+    ],
+    "60": [
+     "60_p.mp3"
+    ],
+    "63": [
+     "63_p.mp3"
+    ],
+    "68": [
+     "68_p.mp3"
+    ],
+    "70": [
+     "70_p.mp3"
+    ],
+    "74": [
+     "74_p.mp3"
+    ],
+    "77": [
+     "77_p.mp3"
+    ],
+    "81": [
+     "81_p.mp3"
+    ]
+   }
+  }
+ }
+}
