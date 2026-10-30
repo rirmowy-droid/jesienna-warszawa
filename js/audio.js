@@ -98,6 +98,40 @@ const RELEASE = {pianino:.4,rhodes:.45,fm_piano:.4,wibrafon:.7,dzwonki:.9,kielis
 const ATTACK = {chor_alty_oo:.5,chor_tenory_oo:.5,chor_alty_ah:.5,chor_tenory_ah:.5,kieliszki:.3};
 const lastVoice = {};
 function nearest(list, m){ let b=list[0]; for (const r of list) if (Math.abs(r-m)<Math.abs(b-m)) b=r; return b; }
+
+// ---------- expression: what samples lack – breath, vibrato, living pitch and swells ----------
+// vib: rate (Hz), depth (cents), delay (s) before it blooms · air: breath noise mixed into the tone · drift: random tuning (cents)
+// swell: long notes grow a little and relax (messa di voce) · inhale: audible breath before a phrase · click: key/valve noise · trem: amplitude wobble
+const EXPR = {
+  sax_tenor:     {vib:[5.1,16,.28], air:[.035,2300,.9], drift:5, swell:.12, inhale:.05, click:.03},
+  sax_baryton:   {vib:[4.7,14,.32], air:[.04,1500,.9],  drift:5, swell:.1,  inhale:.06, click:.035},
+  trabka_tlumik: {vib:[5.4,10,.32], air:[.05,3200,1.1], drift:4, swell:.12, inhale:.045, click:.02},
+  trabka:        {vib:[5.5,12,.3],  air:[.03,3000,1],   drift:4, swell:.1,  inhale:.045, click:.02},
+  chor_alty_oo:  {vib:[5.0,14,.45], air:[.02,1700,.7],  drift:7, swell:.15, inhale:.03},
+  chor_alty_ah:  {vib:[5.0,14,.45], air:[.02,1900,.7],  drift:7, swell:.15, inhale:.03},
+  chor_tenory_oo:{vib:[4.8,12,.5],  air:[.015,1400,.7], drift:7, swell:.12},
+  chor_tenory_ah:{vib:[4.8,12,.5],  air:[.015,1600,.7], drift:7, swell:.12},
+  kontrabas:     {drift:4},
+  wibrafon:      {trem:[5.2,.18]},
+  rhodes:        {drift:2, trem:[4.2,.06]},
+  pianino:       {drift:2}, fm_piano:{drift:1}, dzwonki:{drift:2}, kieliszki:{drift:6, swell:.1, vib:[3.5,8,.6]},
+};
+let noiseBuf=null;
+function noise(){ if (!noiseBuf){ noiseBuf=ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const d=noiseBuf.getChannelData(0); let b=0; for (let i=0;i<d.length;i++){ b=b*.6+(Math.random()*2-1)*.4; d[i]=b; } } return noiseBuf; }
+// a soft inhale before a phrase ("hhh"), filtered like air through the mouth
+function inhale(t, level, out){
+  const n=ctx.createBufferSource(); n.buffer=noise(); const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=rnd(900,1400); bp.Q.value=.9;
+  const g=ctx.createGain(); g.gain.value=0; n.connect(bp); bp.connect(g); g.connect(out);
+  const len=rnd(.22,.36); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(level, t+len*.55); g.gain.linearRampToValueAtTime(0, t+len);
+  bp.frequency.setValueAtTime(bp.frequency.value, t); bp.frequency.linearRampToValueAtTime(bp.frequency.value*1.4, t+len);
+  n.start(t, Math.random()*1.5); n.stop(t+len+.05);
+}
+function click(t, level, out){ // key pad / valve noise: tiny filtered tick
+  const n=ctx.createBufferSource(); n.buffer=noise(); const hp=ctx.createBiquadFilter(); hp.type='bandpass'; hp.frequency.value=rnd(1800,3200); hp.Q.value=2;
+  const g=ctx.createGain(); n.connect(hp); hp.connect(g); g.connect(out); g.gain.setValueAtTime(level,t); g.gain.setTargetAtTime(0,t+.002,.008); n.start(t, Math.random()); n.stop(t+.06);
+}
+const holdAt = (param, at) => { if (param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(at); else param.cancelScheduledValues(at); };
+
 function noteOn(key, m, o={}){
   if (key.startsWith('syn_')) return synthOn(key, m, o);
   const I = MAN[key]; if (!I) return null;
@@ -111,24 +145,56 @@ function noteOn(key, m, o={}){
   const file = pick(I.layers[layer][root]), buf = buffers[`${key}/${file}`]; if (!buf) return null;
   const isMono = o.mono ?? MONO.has(key), chan = o.ch || key;   // ch: separate legato channel per musical role
   const prev = isMono ? lastVoice[chan] : null, legato = !!(o.legato && prev && prev.alive);
-  const rate = Math.pow(2,(m-root)/12);
+  const X = EXPR[key] || {}, feel = o.feel ?? .5;                // feel: how expressive this player is right now (0..1)
+  const cents = X.drift ? (Math.random()*2-1)*X.drift : 0;
+  const rate = Math.pow(2,(m-root)/12 + cents/1200);
+  const out = o.bus || bus;
   const s = ctx.createBufferSource(); s.buffer = buf;
-  const tone = ctx.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value = 2500 + vel*12000;
-  const g = ctx.createGain(); g.gain.value = 0; s.connect(tone); tone.connect(g); g.connect(o.bus || bus);
-  // per-note loudness correction + gentle dynamics (about 6 dB from softest to loudest)
-  const amp = (o.gain ?? 1) * (levels[key]?.[layer] ?? 1) * (I.gain?.[file] ?? 1) * (.5 + .5*vel) * .8;
+  const tone = ctx.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value = 2200 + vel*vel*13000;   // softer = darker, like a real player
+  const g = ctx.createGain(); g.gain.value = 0; s.connect(tone); tone.connect(g); g.connect(out);
+  const amp = (o.gain ?? 1) * (levels[key]?.[layer] ?? 1) * (I.gain?.[file] ?? 1) * (.42 + .58*vel) * .8;
   s.playbackRate.setValueAtTime(rate, t);
   if (legato && Math.abs(prev.m-m)<=4){ s.playbackRate.setValueAtTime(rate*Math.pow(2,(prev.m-m)/12), t); s.playbackRate.exponentialRampToValueAtTime(rate, t+.06+.015*Math.abs(prev.m-m)); }
-  else if (o.scoop){ s.playbackRate.setValueAtTime(rate*Math.pow(2,-o.scoop/12), t); s.playbackRate.exponentialRampToValueAtTime(rate, t+.11); }
+  else if (o.scoop){ s.playbackRate.setValueAtTime(rate*Math.pow(2,-o.scoop/12), t); s.playbackRate.exponentialRampToValueAtTime(rate, t+.11+o.scoop*.04); }
   const off = buf._on + (legato?.07:0), atk = legato ? .045 : (o.attack ?? ATTACK[key] ?? .006);
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(amp, t+atk); s.start(t, off);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(amp, t+atk);
+  // long notes breathe: a gentle swell and relax instead of a flat level
+  if (X.swell){ const sw=X.swell*(.6+feel*.8); g.gain.linearRampToValueAtTime(amp*(1+sw), t+atk+.55); g.gain.setTargetAtTime(amp*(1-sw*.6), t+atk+.6, 1.4); }
+  s.start(t, off);
+  const extra=[];                                                 // nodes to stop with the note
+  // vibrato that blooms after the attack, deeper with feeling; slightly irregular rate
+  if (X.vib && (o.vib ?? true)){
+    const [vr, vd, vdel] = X.vib, depth = vd*(.55 + feel*.9);
+    const lfo=ctx.createOscillator(); lfo.frequency.value = vr*rnd(.92,1.08);
+    const lg=ctx.createGain(); lg.gain.value=0; lfo.connect(lg); lg.connect(s.playbackRate);
+    const k = rate*(Math.pow(2, depth/1200)-1);
+    lg.gain.setValueAtTime(0, t+vdel); lg.gain.linearRampToValueAtTime(k, t+vdel+.6);
+    lfo.frequency.setValueAtTime(lfo.frequency.value, t+vdel); lfo.frequency.linearRampToValueAtTime(vr*rnd(1.0,1.12), t+vdel+2);
+    lfo.start(t); extra.push(lfo);
+  }
+  // breath inside the tone: more audible when soft (subtone), follows the note
+  if (X.air){
+    const [ag, af, aq] = X.air, n=ctx.createBufferSource(); n.buffer=noise(); n.loop=true;
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=af*rnd(.9,1.1); bp.Q.value=aq;
+    const ng=ctx.createGain(); ng.gain.value=0; n.connect(bp); bp.connect(ng); ng.connect(g);
+    const lvl = ag*(1.4-vel*.8)/Math.max(.2, amp) * amp;          // relative to the note
+    ng.gain.setValueAtTime(0,t); ng.gain.linearRampToValueAtTime(lvl*2.2, t+atk+.03); ng.gain.setTargetAtTime(lvl, t+atk+.05, .15);
+    n.start(t, Math.random()*1.5); extra.push(n);
+  }
+  if (X.click && !legato && o.click !== false) click(t-.004, X.click*(.5+vel), out);
+  else if (X.click && legato && chance(.5)) click(t, X.click*.5, out);
+  // gentle tremolo (vibraphone motor, Rhodes)
+  if (X.trem){ const tl=ctx.createOscillator(); tl.frequency.value=X.trem[0]; const tg=ctx.createGain(); tg.gain.value=amp*X.trem[1]; tl.connect(tg); tg.connect(g.gain); tl.start(t); extra.push(tl); }
   if (legato) prev.release(t+.03, .035);
+  const stopAll = at => { try{ s.stop(at); }catch(e){} extra.forEach(x=>{ try{ x.stop(at); }catch(e){} }); };
   const v = { m, alive:true, amp,
     release(at, tau){ if(!this.alive) return; at=Math.max(at ?? ctx.currentTime, t+atk); this.alive=false; tau = tau ?? (RELEASE[key] ?? .15)/3;
-      g.gain.cancelScheduledValues(at); g.gain.setValueAtTime(amp, at); g.gain.setTargetAtTime(0, at, tau); try{ s.stop(at+tau*8); }catch(e){} },
-    fall(at, semis, len){ s.playbackRate.setValueAtTime(rate, at); s.playbackRate.exponentialRampToValueAtTime(rate*Math.pow(2,-semis/12), at+len);
-      g.gain.setValueAtTime(amp, at); g.gain.linearRampToValueAtTime(.0001, at+len); this.alive=false; try{ s.stop(at+len+.05); }catch(e){} },
-    swell(at, to, len){ g.gain.setValueAtTime(amp, at); g.gain.linearRampToValueAtTime(to, at+len); } };
+      holdAt(g.gain, at); g.gain.setTargetAtTime(0, at, tau);
+      if (X.vib && MONO.has(key)){ holdAt(s.playbackRate, at); s.playbackRate.setTargetAtTime(rate*Math.pow(2,-8/1200), at, tau*2); }   // pitch sags as the air stops
+      stopAll(at+tau*8); },
+    fall(at, semis, len){ holdAt(s.playbackRate, at); s.playbackRate.exponentialRampToValueAtTime(rate*Math.pow(2,-semis/12), at+len);
+      holdAt(g.gain, at); g.gain.linearRampToValueAtTime(.0001, at+len); this.alive=false; stopAll(at+len+.05); },
+    swell(at, to, len){ holdAt(g.gain, at); g.gain.linearRampToValueAtTime(to, at+len); } };
   if (isMono) lastVoice[chan] = v;
   glow(key, vel, t);
   return v;

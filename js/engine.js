@@ -34,6 +34,7 @@ function soloInst(id){
   if (id==='tlo'){ const v=L.tlo.inst; return v==='chor' ? 'chor_alty_oo' : v==='chor_ah' ? 'chor_alty_ah' : v==='syn_pad' ? 'syn_smyczki' : v; }
   return L[id].inst;
 }
+const a_isChoir = () => L.tlo.inst==='chor' || L.tlo.inst==='chor_ah';
 const RANGE = {sax_tenor:[55,77], sax_baryton:[43,64], trabka_tlumik:[62,81], trabka:[60,82], wibrafon:[62,86], syn_dzwon:[62,88], dzwonki:[64,88],
   rhodes:[60,84], pianino:[60,86], fm_piano:[60,86], kontrabas:[36,57], syn_bas:[36,58], chor_alty_oo:[60,76], chor_alty_ah:[60,76],
   syn_smyczki:[60,84], kieliszki:[75,86]};
@@ -41,7 +42,11 @@ const rangeOf = inst => RANGE[inst] || [60,80];
 
 function tempo(){ return Math.round(S.baseTempo * (0.88 + 0.24*M.ruch)); }
 const compound = meterId => METERS[meterId].g.every(g=>g===3);
-function eighth(meterId){ return 60/tempo() / (compound(meterId) ? 3 : 2); }
+// The eighth-note pulse stays the same when the meter changes (like a real band in mixed meters): it is set by the
+// song's main meter, not by the current bar. Tempo changes glide over about a bar instead of jumping.
+let curTempo = null;
+function eighth(){ return 60/(curTempo ?? tempo()) / (compound(S.meter) ? 3 : 2); }
+function glideTempo(){ const target=tempo(); if (curTempo===null) curTempo=target; curTempo += (target-curTempo)*.12; if (Math.abs(target-curTempo)<.05) curTempo=target; }
 
 // ======================= harmony helpers =======================
 const layersOf = k => MAN && MAN[k] && MAN[k].layers ? LAYERS.filter(l=>MAN[k].layers[l]) : [];
@@ -74,7 +79,12 @@ function setSong(id){
   return song;
 }
 function setCustom(text){ const r=parseProgression(text); if (!r.chords.length) return r; S.songId='custom'; S.progBase=r.chords; S.progKey=S.key; queueProg(); return r; }
-function setKey(k){ S.key=k; queueProg(); }
+function setKey(k){
+  S.key=k;
+  if (!running || S.pendingProg){ queueProg(); return; }
+  S.prog = transpose(S.progBase, S.key - S.progKey);   // same chords, same place in the form – just in the new key
+  T.rechord = true;                                      // re-voice the sounding chord on the next beat
+}
 function queueProg(){ S.pendingProg = transpose(S.progBase, S.key - S.progKey); if (!running) { S.prog=S.pendingProg; S.pendingProg=null; } }
 
 // ======================= form =======================
@@ -90,14 +100,14 @@ const JAM_ALL = {tlo:1, bas:1, akordy:1, solo:1, perk:1};
 // ======================= transport state =======================
 let running=false, timer=null, nextT=0, step=0;
 const T = {               // timeline
-  meter:'4/4', barStart:0, barLen:8, bar:0,
+  meter:'4/4', barStart:0, barLen:8, bar:0, chordIdx:null, rechord:false, E:.3, soloHeat:0,
   ci:0, chordRemain:0, chord:null, events:[], chorus:0, chorusStart:false,
   sec:0, secBar:0, secStartStep:0, alignStep:0, jamStage:0, jamSolo:0, trade:false,
 };
 let userUntil=0;                          // the player on the touch strip has the stage until this time
 const players = {};                       // per-layer solo phrase state
 function resetTransport(){
-  step=0; Object.assign(T,{barStart:0, barLen:8, bar:0, ci:0, chordRemain:0, chord:null, events:[], chorus:0, sec:0, secBar:0, secStartStep:0, alignStep:0, jamStage:0, jamSolo:0, trade:false});
+  step=0; curTempo=null; Object.assign(T,{barStart:0, barLen:8, bar:0, ci:0, chordRemain:0, chord:null, chordIdx:null, rechord:false, events:[], chorus:0, sec:0, secBar:0, secStartStep:0, alignStep:0, jamStage:0, jamSolo:0, trade:false, E:.3, soloHeat:0});
   if (S.pendingProg){ S.prog=S.pendingProg; S.pendingProg=null; }
   for (const id in players) delete players[id];
 }
@@ -133,6 +143,25 @@ function soloist(){
 function jamSoloists(){ return ['solo','akordy','bas','tlo','perk'].filter(id=>L[id].on && (id!=='tlo' || S.soloWho==='tlo')); }
 function sectionLevels(){ return S.form==='jam' ? JAM_ALL : SECTIONS[T.sec]; }
 
+// ======================= dynamics =======================
+// T.E is the band's energy (0..1). It follows the form slowly – a crescendo into the climax, a hush in 'Oddech',
+// an arc across each solo chorus – plus the mood knobs. Every player reads it, so the band swells and settles together.
+const SECTION_ENERGY = {'Mgła':.18, 'Wejście':.38, 'Noc':.55, 'Szczyt':.85, 'Oddech':.28};
+function energyTarget(){
+  let base;
+  if (S.form==='jam'){
+    const len = Math.max(1, progBars(S.prog)), p = clamp((T.secBar-1)/len, 0, 1);
+    base = T.trade ? .72 : T.jamStage===0 ? .4 : .38 + .45*Math.sin(Math.PI*Math.min(1, p*1.15));   // build through the chorus, ease at the end
+  } else {
+    const s = SECTIONS[T.sec], nx = SECTIONS[(T.sec+1)%SECTIONS.length], p = clamp((T.secBar-1)/s.bars, 0, 1);
+    base = lerp(SECTION_ENERGY[s.name], SECTION_ENERGY[nx.name], p>.75 ? (p-.75)*2 : 0);              // lean into the next part
+  }
+  const avgInt = (L.solo.int + L.akordy.int + L.bas.int + L.perk.int)/4;
+  return clamp(base*.75 + M.nap*.25 + (avgInt-.35)*.25 + T.soloHeat*.15, 0, 1);
+}
+function updateEnergy(){ T.E += (energyTarget() - T.E) * .3; T.soloHeat *= .7; }
+const dyn = (base, spread=.5) => clamp(base * (1 - spread/2 + spread*T.E), .05, 1);   // scale a velocity by the band energy
+
 // ======================= bar & chord bookkeeping =======================
 const at = (t, fn) => setTimeout(()=>{ if (running) fn(); }, Math.max(0,(t-ctx.currentTime)*1000));
 function newBar(t){
@@ -152,7 +181,12 @@ function newBar(t){
     }
   }
   // meter of this bar
-  const m = nextMeter(sectionChange); if (m!==T.meter){ T.meter=m; at(t, ()=>UI.meterShown(m)); }
+  const m = nextMeter(sectionChange);
+  if (m!==T.meter){
+    T.meter=m; at(t, ()=>UI.meterShown(m));
+    T.alignStep = step;                                   // everybody meets on this downbeat
+    for (const id in players){ const P=players[id]; P.phrase = P.phrase.filter(n=>n.at < step); P.next = step + METERS[m].starts[1] || step+2; }
+  }
   T.barLen = METERS[T.meter].len; T.barStart = step; T.bar++;
   // chords falling into this bar
   T.events=[]; T.chorusStart=false; let pos=0;
@@ -163,7 +197,7 @@ function newBar(t){
       const c = S.prog[T.ci % S.prog.length]; T.ci++; T.chordRemain=c.bars;
       // put the change on the nearest beat
       const want = pos*T.barLen, starts=METERS[T.meter].starts; let st=starts[0]; for (const s0 of starts) if (Math.abs(s0-want)<Math.abs(st-want)) st=s0;
-      T.events.push({pos: st, chord:c});
+      T.events.push({pos: st, idx:(T.ci-1) % S.prog.length});
     }
     const take=Math.min(T.chordRemain, 1-pos); T.chordRemain-=take; pos+=take;
   }
@@ -187,7 +221,7 @@ function jamLabel(){ const w=soloist(); const names={solo:'solista',akordy:'akor
 function nextChordAfter(){
   // chord that follows the one sounding now
   const pos = step - T.barStart, later = T.events.find(e=>e.pos>pos);
-  if (later) return later.chord;
+  if (later) return S.prog[later.idx];
   return S.prog.length ? S.prog[T.ci % S.prog.length] : T.chord;
 }
 function chordEndsThisBeat(){ // is the next beat a chord change? (for bass approach notes)
@@ -196,15 +230,25 @@ function chordEndsThisBeat(){ // is the next beat a chord change? (for bass appr
 }
 
 // ======================= scheduler =======================
+function tick(t, silent){
+  if (step===0 || step - T.barStart >= T.barLen) newBar(t);
+  const gb = beatInfo(T.meter, step - T.barStart);
+  const ev = T.events.find(e=>e.pos===gb.pos);
+  if (ev){ T.chordIdx = ev.idx; T.chord = S.prog[ev.idx]; if (!silent) chordChanged(t, eighth()); }
+  else if (T.rechord && gb.onBeat && T.chordIdx!=null){ T.rechord=false; T.chord = S.prog[T.chordIdx % S.prog.length]; if (!silent) chordChanged(t, eighth()); }
+  if (gb.pos===0) updateEnergy();
+  return gb;
+}
 function schedule(){
-  if (nextT < ctx.currentTime - .05){ while (nextT < ctx.currentTime + .05){ nextT += eighth(T.meter); step++; if (step - T.barStart >= T.barLen) newBar(nextT); } }
+  if (nextT < ctx.currentTime - .05){            // the phone was busy: jump ahead silently but keep bars and chords in step
+    while (nextT < ctx.currentTime + .05){ tick(nextT, true); glideTempo(); nextT += eighth(); step++; }
+  }
   const ahead = document.hidden ? 2.5 : .6;
   while (nextT < ctx.currentTime + ahead){
-    if (step===0 || step - T.barStart >= T.barLen) newBar(nextT);
-    const e8 = eighth(T.meter), gb = beatInfo(T.meter, step - T.barStart);
-    const swing = (gb.groupLen===2 && gb.sub===1) ? e8*lerp(.32, .12, clamp((tempo()-60)/150,0,1)) : 0;
+    glideTempo();
+    const e8 = eighth(), gb = tick(nextT, false);
+    const swing = (gb.groupLen===2 && gb.sub===1) ? e8*lerp(.32, .12, clamp((curTempo-60)/150,0,1)) : 0;
     const t = nextT + swing;
-    const ev = T.events.find(e=>e.pos===gb.pos); if (ev){ T.chord=ev.chord; chordChanged(t, e8); }
     if (T.chord){
       const lv=sectionLevels(), who=soloist();
       if (L.perk.on && lv.perk)     playDrums(t, e8, lv, who);
@@ -220,8 +264,10 @@ function schedule(){
 
 // timing feel: small human drift, more (and sometimes clearly off the grid) with intensity
 function human(id, t, e8){
-  const it=L[id].int; let d = (Math.random()+Math.random()-1) * (.004 + it*.018);
-  if (chance(it*it*.12)) d += (chance(.5)?-1:1) * e8 * rnd(.15, .4);      // passionate push / drag
+  // drums keep the time (tight), bass almost; soloists and keys breathe more freely and, with intensity, push and drag
+  const it=L[id].int, anchor = id==='perk' ? .35 : id==='bas' ? .6 : 1;
+  let d = (Math.random()+Math.random()-1) * (.003 + it*.016) * anchor;
+  if (id!=='perk' && chance(it*it*.12*anchor)) d += (chance(.5)?-1:1) * e8 * rnd(.15, .4) * anchor;
   return Math.max(ctx.currentTime+.005, t + d);
 }
 
@@ -234,7 +280,8 @@ function chordChanged(t, e8){
   const lv=sectionLevels();
   if (!(L.tlo.on && lv.tlo) || soloist()==='tlo') return;
   const Tt=TYPES[c.type], g1=(c.root+Tt.guide[0])%12, g2=(c.root+Tt.guide[1])%12, g3=(c.root+(Tt.col[0]%12))%12;
-  const it=L.tlo.int, lvl=(.4 + M.noc*.3)*(.8+it*.4), dur = e8*T.barLen*Math.max(1, c.bars) + 1;
+  const it=L.tlo.int, lvl=(.4 + M.noc*.3)*(.8+it*.4)*(1.1 - T.E*.3), dur = e8*T.barLen*Math.max(1, c.bars) + 1;
+  if (a_isChoir() && chance(.6)) inhale(t-.35, .012*(.6+it), layerBus('tlo'));       // the choir breathes before a new chord
   const [a,b] = layerInsts('tlo', L.tlo.inst), bus=layerBus('tlo');
   if (b){ const o={when:t, vel:.4+it*.3, layer: it>.7?'f':'mf', gain:lvl*.8, bus};
     held.tlo.push(noteOn(a, snap(55,[g1]), o), noteOn(b, snap(63,[g2]), o), noteOn(b, snap(68,[g3]), {...o, gain:lvl*.55})); }
@@ -256,7 +303,8 @@ function playBass(t, e8, lv, who){
   else if (walk && chordEndsThisBeat()){ const nx=nextChordAfter(); m = bassNote(nx.root) + pick([-1,1,-2]); }
   else if (walk) m = snap(bassNote(c.root) + pick([2,3,4,5,7,9]), sc) + (chance(it*.25) ? 12 : 0);
   else m = bassNote((c.root+7)%12);
-  const len = (walk ? b.groupLen : b.groupLen*2)*e8, vel = (b.beat===0?.5:.42) + M.nap*.1 + it*.3;
+  const len = (walk ? b.groupLen : b.groupLen*2)*e8;
+  const vel = dyn((b.beat===0 ? .52 : b.strong ? .47 : .4) + M.nap*.08 + it*.28, .6) * rnd(.95,1.05);
   const v = noteOn(inst, m, {bus:layerBus('bas'), when:human('bas',t,e8), vel, layer: layerFor(inst, .3 + it*.5 + M.nap*.2), gain: who && who!=='bas' ? .9 : 1});
   v && v.release(t+len*(it>.7 && chance(.3) ? .55 : .93), .05);
 }
@@ -273,7 +321,8 @@ function playComp(t, e8, who){
   else p = it*.12*quiet;
   if (who==='perk') p = b.beat===0 && b.onBeat && chance(.5) ? 1 : 0;
   if (!chance(p)) return;
-  const level = clamp(.3 + M.nap*.25 + it*.35, .1, 1), vel = clamp(level*quiet + rnd(-.03,.03), .1, 1);
+  const listen = who && who!=='akordy' ? 1 - T.soloHeat*.35 : 1;
+  const level = clamp(dyn(.32 + M.nap*.22 + it*.35, .7), .1, 1), vel = clamp(level*quiet*listen*(b.beat===0 ? 1 : .9) + rnd(-.03,.03), .08, 1);
   const cc = (b.lastBeat && !b.onBeat && chordEndsThisBeat()) ? nextChordAfter() : T.chord;
   held.akordy.forEach(v=>v&&v.release(t+.03, .12)); held.akordy=[];
   const lay = compLayer(inst, level), short = it>.55 && chance(it*.5), tt=human('akordy',t,e8);
@@ -301,7 +350,7 @@ function planPhrase(id, inst){
   const bars = chance(.35 + dens*.35) ? 2 : 1, barLen=METERS[L[id].meter==='wspólne' ? T.meter : L[id].meter].len;
   const startOffs = METERS[L[id].meter==='wspólne' ? T.meter : L[id].meter].starts;
   let st = step + pick([0, ...startOffs.slice(0,2), 1]); const end = step + bars*barLen - 1;
-  const peak = clamp(.28 + M.nap*.35 + it*.45 + rnd(-.06,.06), .12, 1);
+  const peak = clamp(dyn(.3 + M.nap*.3 + it*.45, .7) + rnd(-.05,.05), .12, 1);
   const pool = slow ? CELLS_SLOW : (it>.45 && chance(it) ? [...CELLS_CALM, ...CELLS_HOT, ...CELLS_HOT] : CELLS_CALM);
   const notes=[];
   while (st < end){ for (const d of pick(pool)){ if (st>=end) break; notes.push({at:st, len:Math.min(d, end-st+1)}); st+=d; } }
@@ -328,8 +377,14 @@ function playSolo(id, t, e8){
     if (target>hi-1){ target=hi-3; n.dir=-1; } if (target<lo+1){ target=lo+3; n.dir=1; }
     const m = snap(target, (strong||n.last) ? soloTargets(c) : sc); P.mel=m;
     const tt = human(id, t + (n.at-step)*e8, e8), dur = n.len*e8;
+    // dynamics inside the phrase: higher notes a little louder, swung off-beats lifted, quick passing notes lighter
+    const mid=(lo+hi)/2, offbeat = (n.at%1===0) && !layerBeat(id).onBeat;
+    let vel = n.vel + (m-mid)/(hi-lo)*.16 + (offbeat ? .04 : 0) - (n.len<1 ? .07 : 0) + (n.cry ? .1 : 0);
+    vel = clamp(vel*rnd(.96,1.04), .08, 1);
+    if (n.first && legato && !inst.startsWith('chor_')) inhale(tt-.32, (EXPR[inst]?.inhale ?? .03)*(.6+it*.6), layerBus(id));
+    T.soloHeat = Math.max(T.soloHeat, vel*(.6+it*.4));
     const scoop = legato && (n.first || n.len>=2) && chance(.15 + it*.5) ? rnd(.4, .5+it*1.2) : 0;
-    const v = noteOn(inst, m, {bus:layerBus(id), ch:'solo_'+id, mono:legato, when:tt, vel:n.vel + (n.cry ? .1 : 0), layer:n.layer,
+    const v = noteOn(inst, m, {bus:layerBus(id), ch:'solo_'+id, mono:legato, when:tt, vel, layer:n.layer, feel:.35+it*.5+T.E*.2, vib: n.len>=1.5 || n.last,
       legato: legato && !n.first, scoop, attack: inst.startsWith('chor_') ? .12 : undefined});
     if (!v) continue;
     const i=P.phrase.indexOf(n), nx=P.phrase[i+1];
@@ -348,7 +403,7 @@ function playDrums(t, e8, lv, who){
   const it=L.perk.int, b=layerBeat('perk'), dens=clamp(lv.perk*(.3+M.ruch*.6+it*.4), 0, 1.6);
   const tt=human('perk', t, e8);
   if (who==='perk'){ drumSolo(tt, e8, b); return; }
-  const under = who && who!=='perk' ? (who==='bas' ? .7 : .9) : 1;
+  const under = (who && who!=='perk' ? (who==='bas' ? .7 : .9) : 1) * (.72 + T.E*.45 + T.soloHeat*.15);
   const inst=L.perk.inst;
   if (inst==='zestaw'){
     const lastBar = S.form==='nastroj' ? T.secBar===SECTIONS[T.sec].bars : (T.chordRemain<=1e-6 && S.prog.length && T.ci % S.prog.length===0);
