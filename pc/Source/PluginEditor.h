@@ -26,6 +26,8 @@ public:
     Font getComboBoxFont (ComboBox&) override;
     void positionComboBoxText (ComboBox&, Label&) override;
     void drawPopupMenuBackground (Graphics&, int w, int h) override;
+    void drawButtonBackground (Graphics&, Button&, const Colour&, bool hl, bool down) override;
+    void drawButtonText (Graphics&, TextButton&, bool hl, bool down) override;
 };
 
 /** A knob with its caption and parameter attachment. */

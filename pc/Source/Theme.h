@@ -122,23 +122,17 @@ inline void backdrop (Graphics& g, Rectangle<int> area, const String& file, floa
     lastBackdrop() = { file, { x, y, w, h }, darken, owner };
 }
 
-/** Comic-book panel fill: flat colour with a Ben-Day dot screen (replaces any glassy, blurred look). */
-inline Image dotTile()
+/** Frosted glass: the soft copy of the current backdrop, clipped to r. */
+inline void frosted (Graphics& g, Rectangle<float> r, float corner, const void* owner)
 {
-    static Image tile = []
-    {
-        Image t (Image::ARGB, 8, 8, true);
-        Graphics g (t); g.setColour (Colours::white); g.fillEllipse (2.2f, 2.2f, 3.6f, 3.6f);
-        return t;
-    }();
-    return tile;
-}
-inline void frosted (Graphics& g, Rectangle<float> r, float corner, const void*)
-{
+    auto& b = lastBackdrop();
+    if (b.owner != owner || b.file.isEmpty()) return;
+    auto im = art (b.file.upToLastOccurrenceOf (".", false, false) + "_mat.jpg");
+    if (! im.isValid()) return;
     Graphics::ScopedSaveState ss (g);
     Path clip; clip.addRoundedRectangle (r, corner); g.reduceClipRegion (clip);
-    g.setColour (col::panel.withAlpha (0.55f)); g.fillRect (r);
-    g.setTiledImageFill (dotTile(), 0, 0, 0.06f); g.fillRect (r);
+    g.setImageResamplingQuality (Graphics::highResamplingQuality); g.setOpacity (1.0f);
+    g.drawImage (im, b.placed, RectanglePlacement::stretchToFit);
 }
 
 inline void drawSprite (Graphics& g, const String& file, Rectangle<float> box, RectanglePlacement place = RectanglePlacement::centred)
@@ -215,17 +209,215 @@ inline void nouveauFrame (Graphics& g, Rectangle<float> r, Colour gold, Colour l
     nouveauCorner (g, r.getBottomRight().translated (-3, -3), corner, -1, -1, gold, leaf);
 }
 
+
+// ---------------- patterns ----------------
+// Art Deco
+inline void decoChevrons (Graphics& g, Rectangle<float> r, Colour c, float step = 12, float thick = 1.2f)
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt()); g.setColour (c);
+    for (float y = r.getY() - step; y < r.getBottom() + step; y += step)
+    {
+        Path p; p.startNewSubPath (r.getX() - step, y);
+        for (float x = r.getX() - step; x < r.getRight() + step; x += step) { p.lineTo (x + step * 0.5f, y - step * 0.5f); p.lineTo (x + step, y); }
+        g.strokePath (p, PathStrokeType (thick));
+    }
+}
+inline void decoDiamonds (Graphics& g, Rectangle<float> r, Colour c, float step = 14)
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt()); g.setColour (c);
+    for (float d = -r.getHeight(); d < r.getWidth() + r.getHeight(); d += step)
+    {
+        g.drawLine (r.getX() + d, r.getY(), r.getX() + d - r.getHeight(), r.getBottom(), 0.9f);
+        g.drawLine (r.getX() + d - r.getHeight(), r.getY(), r.getX() + d, r.getBottom(), 0.9f);
+    }
+    for (float y = r.getY(); y < r.getBottom(); y += step) for (float x = r.getX() + (std::fmod ((y - r.getY()) / step, 2.0f) < 1 ? 0 : step * 0.5f); x < r.getRight(); x += step)
+        g.fillEllipse (Rectangle<float> (2.4f, 2.4f).withCentre ({ x, y }));
+}
+inline void decoScallops (Graphics& g, Rectangle<float> r, Colour c, float rad = 10)
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt()); g.setColour (c);
+    int row = 0;
+    for (float y = r.getBottom(); y > r.getY() - rad; y -= rad * 0.75f, ++row)
+        for (float x = r.getX() + (row % 2 ? rad : 0); x < r.getRight() + rad; x += rad * 2)
+        {
+            Path a; a.addCentredArc (x, y, rad, rad, 0, -MathConstants<float>::halfPi, MathConstants<float>::halfPi, true);
+            g.strokePath (a, PathStrokeType (1.0f));
+            Path a2; a2.addCentredArc (x, y, rad * 0.55f, rad * 0.55f, 0, -MathConstants<float>::halfPi, MathConstants<float>::halfPi, true);
+            g.strokePath (a2, PathStrokeType (0.7f));
+        }
+}
+inline void decoWaves (Graphics& g, Rectangle<float> r, Colour c, float step = 9)      // guilloché: concentric arcs
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt()); g.setColour (c);
+    for (int k = 0; k < 3; ++k)
+    {
+        const Point<float> ctr (r.getX() + r.getWidth() * (0.2f + 0.3f * k), r.getBottom() + r.getHeight() * 0.2f);
+        for (float rad = step; rad < r.getWidth() * 1.2f; rad += step) g.drawEllipse (Rectangle<float> (rad * 2, rad * 2).withCentre (ctr), 0.7f);
+    }
+}
+inline void decoSteps (Graphics& g, Rectangle<float> r, Colour c, int steps = 5)   // ziggurat
+{
+    g.setColour (c);
+    for (int i = 0; i < steps; ++i)
+    {
+        const float w = r.getWidth() * (1.0f - (float) i / steps), h = r.getHeight() / steps;
+        g.drawRect (Rectangle<float> (w, h).withCentre ({ r.getCentreX(), r.getBottom() - h * (i + 0.5f) }), 1.0f);
+    }
+}
+inline void decoBorderDentils (Graphics& g, Rectangle<float> strip, Colour c, float w = 6)
+{
+    g.setColour (c);
+    for (float x = strip.getX(); x < strip.getRight(); x += w * 2) g.fillRect (x, strip.getY(), w, strip.getHeight());
+}
+
+// Secession
+inline void flower (Graphics& g, Point<float> c, float r, Colour petal, Colour centre, int petals = 5, float rot = 0)
+{
+    for (int i = 0; i < petals; ++i)
+    {
+        const float a = rot + i * MathConstants<float>::twoPi / petals;
+        Path p; p.startNewSubPath (0, 0); p.cubicTo (r * 0.6f, -r * 0.35f, r * 1.0f, -r * 0.2f, r, 0); p.cubicTo (r * 1.0f, r * 0.2f, r * 0.6f, r * 0.35f, 0, 0);
+        g.setColour (petal); g.fillPath (p, AffineTransform::rotation (a).translated (c));
+        g.setColour (petal.darker (0.5f)); g.strokePath (p, PathStrokeType (0.7f), AffineTransform::rotation (a).translated (c));
+    }
+    g.setColour (centre); g.fillEllipse (Rectangle<float> (r * 0.45f, r * 0.45f).withCentre (c));
+}
+inline void lily (Graphics& g, Point<float> base, float h, Colour petal, Colour stem)
+{
+    Path s; s.startNewSubPath (base); s.cubicTo (base.translated (-h * 0.1f, -h * 0.3f), base.translated (h * 0.12f, -h * 0.55f), base.translated (0, -h * 0.7f));
+    g.setColour (stem); g.strokePath (s, PathStrokeType (1.4f));
+    const auto top = base.translated (0, -h * 0.7f);
+    for (int i = -1; i <= 1; ++i)
+    {
+        Path p; p.startNewSubPath (top); p.quadraticTo (top.translated (i * h * 0.22f - h * 0.05f, -h * 0.18f), top.translated (i * h * 0.16f, -h * 0.32f));
+        p.quadraticTo (top.translated (i * h * 0.22f + h * 0.05f, -h * 0.12f), top); p.closeSubPath();
+        g.setColour (petal); g.fillPath (p); g.setColour (petal.darker (0.4f)); g.strokePath (p, PathStrokeType (0.7f));
+    }
+    Path leaf; leaf.startNewSubPath (base.translated (0, -h * 0.25f)); leaf.quadraticTo (base.translated (h * 0.3f, -h * 0.35f), base.translated (h * 0.32f, -h * 0.5f));
+    leaf.quadraticTo (base.translated (h * 0.1f, -h * 0.4f), base.translated (0, -h * 0.25f));
+    g.setColour (stem); g.fillPath (leaf);
+}
+inline void peacockEye (Graphics& g, Point<float> c, float r, float angle = 0)
+{
+    auto t = AffineTransform::rotation (angle).translated (c);
+    for (int i = 0; i < 22; ++i)    // barbs
+    {
+        const float a = -MathConstants<float>::pi * 0.95f + i * MathConstants<float>::pi * 1.9f / 21;
+        Path b; b.startNewSubPath (0, r * 0.2f); b.quadraticTo (std::sin (a) * r * 0.8f, r * 0.2f - std::cos (a) * r * 0.6f, std::sin (a) * r * 1.25f, -std::cos (a) * r * 1.15f);
+        g.setColour (Colour (0xff6f9a3a).withAlpha (0.8f)); g.strokePath (b, PathStrokeType (0.8f), t);
+    }
+    auto e = [&] (float rx, float ry, float dy, Colour col) { Path p; p.addEllipse (-rx, -ry + dy, rx * 2, ry * 2); g.setColour (col); g.fillPath (p, t); };
+    e (r * 0.62f, r * 0.75f, -r * 0.1f, Colour (0xffc9a93a));
+    e (r * 0.48f, r * 0.6f, -r * 0.05f, Colour (0xff2f8a7a));
+    e (r * 0.32f, r * 0.42f, 0, Colour (0xff1f3f8a));
+    e (r * 0.16f, r * 0.22f, r * 0.05f, Colour (0xff0d1430));
+}
+inline void whiplash (Graphics& g, Rectangle<float> r, Colour c, int n = 3)   // repeating curls (echoes)
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt());
+    for (int k = 0; k < n; ++k)
+    {
+        const float s = r.getHeight() * (0.9f - 0.2f * k), x0 = r.getX() + k * r.getWidth() / n * 0.9f, y0 = r.getBottom();
+        Path p; p.startNewSubPath (x0, y0);
+        p.cubicTo (x0 + s * 0.2f, y0 - s * 0.8f, x0 + s * 0.9f, y0 - s * 0.9f, x0 + s * 0.8f, y0 - s * 0.45f);
+        p.cubicTo (x0 + s * 0.72f, y0 - s * 0.2f, x0 + s * 0.45f, y0 - s * 0.32f, x0 + s * 0.55f, y0 - s * 0.5f);
+        g.setColour (c.withMultipliedAlpha (1.0f - 0.25f * k)); g.strokePath (p, PathStrokeType (1.6f - 0.3f * k, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+}
+inline void stainedGlass (Graphics& g, Rectangle<float> r, int seed, std::initializer_list<uint32> jewels, Colour lead, float alpha = 1.0f)
+{
+    Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt());
+    Random rnd (seed); std::vector<uint32> pal (jewels);
+    // irregular leaded panes: a jittered grid split into triangles
+    const int cols = 4, rows = 3; std::vector<Point<float>> pts;
+    for (int y = 0; y <= rows; ++y) for (int x = 0; x <= cols; ++x)
+    {
+        float px = r.getX() + r.getWidth() * x / cols, py = r.getY() + r.getHeight() * y / rows;
+        if (x > 0 && x < cols) px += (rnd.nextFloat() - 0.5f) * r.getWidth() / cols * 0.6f;
+        if (y > 0 && y < rows) py += (rnd.nextFloat() - 0.5f) * r.getHeight() / rows * 0.6f;
+        pts.push_back ({ px, py });
+    }
+    auto P = [&] (int x, int y) { return pts[(size_t) (y * (cols + 1) + x)]; };
+    for (int y = 0; y < rows; ++y) for (int x = 0; x < cols; ++x)
+        for (int t = 0; t < 2; ++t)
+        {
+            Path p;
+            if ((x + y) % 2 == 0) { if (t == 0) p.addTriangle (P (x, y), P (x + 1, y), P (x + 1, y + 1)); else p.addTriangle (P (x, y), P (x + 1, y + 1), P (x, y + 1)); }
+            else { if (t == 0) p.addTriangle (P (x, y), P (x + 1, y), P (x, y + 1)); else p.addTriangle (P (x + 1, y), P (x + 1, y + 1), P (x, y + 1)); }
+            const Colour c = Colour (pal[(size_t) rnd.nextInt ((int) pal.size())]).withMultipliedAlpha (alpha);
+            g.setGradientFill (ColourGradient (c.brighter (0.35f), p.getBounds().getX(), p.getBounds().getY(), c.darker (0.25f), p.getBounds().getRight(), p.getBounds().getBottom(), false));
+            g.fillPath (p); g.setColour (lead.withMultipliedAlpha (alpha)); g.strokePath (p, PathStrokeType (1.6f, PathStrokeType::mitered));
+        }
+}
+inline void vineBorder (Graphics& g, Rectangle<float> r, Colour stem, Colour leaf, Colour bloom, float amp = 4, float period = 34)
+{
+    auto run = [&] (Point<float> a, Point<float> b)
+    {
+        const float len = a.getDistanceFrom (b); if (len < 10) return;
+        const auto dir = (b - a) / len; const Point<float> nrm (-dir.y, dir.x);
+        Path p; p.startNewSubPath (a);
+        for (float t = 0; t <= len; t += 2) p.lineTo (a + dir * t + nrm * (amp * std::sin (t / period * MathConstants<float>::twoPi)));
+        g.setColour (stem); g.strokePath (p, PathStrokeType (1.1f));
+        int k = 0;
+        for (float t = period * 0.25f; t < len; t += period * 0.5f, ++k)
+        {
+            const float side = (k % 2 ? 1.0f : -1.0f);
+            const auto at = a + dir * t + nrm * (amp * side);
+            if (k % 4 == 3) { flower (g, at, amp * 1.4f, bloom, Colour (0xfff2d27a), 5, t * 0.1f); continue; }
+            Path l; const auto tip = at + nrm * (side * amp * 2.2f) + dir * (amp * 1.2f);
+            l.startNewSubPath (at); l.quadraticTo (at + nrm * (side * amp * 1.6f) - dir * amp, tip); l.quadraticTo (at + dir * (amp * 1.6f), at); l.closeSubPath();
+            g.setColour (leaf); g.fillPath (l);
+        }
+    };
+    run ({ r.getCentreX() + 40, r.getY() }, r.getTopRight().translated (-30, 0));      // the title sits on the left of the top edge
+    run (r.getBottomLeft().translated (30, 0), r.getBottomRight().translated (-30, 0));
+}
+
 /** Translucent card in the current style, with an optional title. */
 inline void card (Graphics& g, Rectangle<float> r, const String& title, float alpha = 0.84f, const void* glassOwner = nullptr)
 {
     const float corner = deco() ? 3.0f : 14.0f;
-    g.setColour (col::ink); g.fillRoundedRectangle (r.translated (5, 5), corner);       // hard comic shadow
+    g.setColour (Colours::black.withAlpha (0.35f)); g.fillRoundedRectangle (r.translated (2, 4), corner);
     if (glassOwner != nullptr) { frosted (g, r, corner, glassOwner); alpha *= 0.72f; }
     g.setColour (col::panel.withAlpha (alpha)); g.fillRoundedRectangle (r, corner);
-    g.setColour (col::ink); g.drawRoundedRectangle (r, corner, 2.5f);
     const float vine = jmin (44.0f, r.getHeight() * 0.3f, r.getWidth() * 0.18f);
-    if (deco()) decoFrame (g, r.reduced (3), col::amber.withAlpha (0.8f));
-    else nouveauFrame (g, r.reduced (3), col::amber, col::accent2, vine);
+    if (deco())
+    {
+        decoFrame (g, r.reduced (3), col::amber.withAlpha (0.8f));
+        if (r.getWidth() > 220)
+        {   // a band of chevrons under the top edge and fans in the lower corners
+            decoChevrons (g, Rectangle<float> (r.getRight() - 150, r.getY() + 8, 120, 10), col::accent2.withAlpha (0.55f), 8, 1.0f);
+            decoFan (g, { r.getX() + 8, r.getBottom() - 8 }, 26, 0.0f, MathConstants<float>::halfPi, 7, col::amber.withAlpha (0.45f), 0.9f);
+            decoFan (g, { r.getRight() - 8, r.getBottom() - 8 }, 26, -MathConstants<float>::halfPi, 0.0f, 7, col::amber.withAlpha (0.45f), 0.9f);
+        }
+    }
+    else
+    {
+        nouveauFrame (g, r.reduced (3), col::amber, col::accent2, vine);
+        if (r.getWidth() > 220) vineBorder (g, r.reduced (8, 6), col::amber.withAlpha (0.55f), col::accent2.withAlpha (0.75f), Colour (0xffc8553a), 3.5f, 40);
+    }
+    if (r.getWidth() > 500 && r.getHeight() > 200)
+    {   // large panels carry a faint emblem, like a watermark in the lacquer / glass
+        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.reduced (6).toNearestInt());
+        if (deco())
+        {
+            decoFan (g, { r.getCentreX(), r.getBottom() - 6 }, r.getHeight() * 0.85f, -1.45f, 1.45f, 40, col::amber.withAlpha (0.09f), 1.2f);
+            decoSteps (g, Rectangle<float> (r.getHeight() * 0.9f, r.getHeight() * 0.35f).withCentre ({ r.getCentreX(), r.getBottom() - r.getHeight() * 0.2f }), col::accent2.withAlpha (0.18f), 6);
+        }
+        else
+        {
+            const auto c = Point<float> (r.getCentreX(), r.getCentreY() + 10); const float rad = r.getHeight() * 0.42f;
+            for (int i = 0; i < 12; ++i)
+            {
+                const float a = i * MathConstants<float>::twoPi / 12;
+                Path petal; petal.startNewSubPath (c); petal.quadraticTo (c + Point<float> (std::sin (a - 0.2f), -std::cos (a - 0.2f)) * rad * 1.1f, c + Point<float> (std::sin (a), -std::cos (a)) * rad);
+                petal.quadraticTo (c + Point<float> (std::sin (a + 0.2f), -std::cos (a + 0.2f)) * rad * 1.1f, c);
+                g.setColour (col::amber.withAlpha (0.1f)); g.strokePath (petal, PathStrokeType (1.2f));
+            }
+            g.setColour (col::amber.withAlpha (0.1f)); g.drawEllipse (Rectangle<float> (rad * 2.2f, rad * 2.2f).withCentre (c), 1.2f);
+            g.drawEllipse (Rectangle<float> (rad * 0.5f, rad * 0.5f).withCentre (c), 1.2f);
+        }
+    }
     if (title.isNotEmpty())
     {
         g.setColour (col::amber); g.setFont (FontOptions (13.0f, Font::bold));

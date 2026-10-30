@@ -55,9 +55,9 @@ void Look::refreshColours()
 
 static void knobShadow (Graphics& g, Rectangle<float> c)
 {
-    g.setColour (col::ink); g.fillEllipse (c.translated (2.5f, 2.5f));      // hard offset shadow, drawn like a comic
+    g.setColour (Colours::black.withAlpha (0.35f));
+    g.fillEllipse (c.translated (0, c.getHeight() * 0.06f));
 }
-static void inkRing (Graphics& g, Rectangle<float> c, float w = 2.0f) { g.setColour (col::ink); g.drawEllipse (c, w); }
 
 void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float a0, float a1, Slider& s)
 {
@@ -77,10 +77,29 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
     {
         auto k = c.reduced (d * 0.1f);
         knobShadow (g, k);
-        g.setColour (Colour (0xff3a3a3a));
-        g.fillEllipse (k); inkRing (g, k);
-        g.setColour (Colour (0xff5a5a5a)); g.drawEllipse (k, 1.0f);
-        pointer (d * 0.05f, d * 0.38f, jmax (2.0f, d * 0.06f), Colours::white);
+        if (deco())
+        {   // gold fluted skirt, black lacquer cap with a little gold sunburst
+            g.setGradientFill (ColourGradient (Colour (0xfff2d58e), k.getX(), k.getY(), Colour (0xff8a5f22), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k);
+            for (int i = 0; i < 24; ++i) { const float a = i * MathConstants<float>::twoPi / 24; g.setColour (Colour (0xff5a3a12).withAlpha (0.55f));
+                g.drawLine (cx + std::sin (a) * k.getWidth() * 0.38f, cy - std::cos (a) * k.getWidth() * 0.38f, cx + std::sin (a) * k.getWidth() * 0.5f, cy - std::cos (a) * k.getWidth() * 0.5f, 1.0f); }
+            auto cap = k.reduced (k.getWidth() * 0.14f);
+            g.setGradientFill (ColourGradient (Colour (0xff3a3632), cap.getX(), cap.getY(), Colour (0xff050404), cap.getRight(), cap.getBottom(), false));
+            g.fillEllipse (cap);
+            decoFan (g, cap.getCentre().translated (0, cap.getHeight() * 0.32f), cap.getWidth() * 0.32f, -1.1f, 1.1f, 6, col::amber.withAlpha (0.45f), 0.7f);
+            pointer (d * 0.05f, d * 0.36f, jmax (2.0f, d * 0.06f), Colour (0xfff2d58e));
+        }
+        else
+        {   // brass knob with an enamel cap and an engraved flower
+            g.setGradientFill (ColourGradient (Colour (0xfff0d58a), k.getX(), k.getY(), Colour (0xff6e4e1e), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k);
+            auto cap = k.reduced (k.getWidth() * 0.15f);
+            g.setGradientFill (ColourGradient (Colour (0xfff4ead2), cap.getX(), cap.getY(), Colour (0xffc9b48a), cap.getRight(), cap.getBottom(), false));
+            g.fillEllipse (cap);
+            flower (g, cap.getCentre(), cap.getWidth() * 0.26f, Colour (0xffc8553a).withAlpha (0.6f), Colour (0xff6a4a1a), 5, ang);
+            g.setColour (Colour (0xff2a1c0c).withAlpha (0.6f)); g.drawEllipse (k, 1.0f);
+            pointer (d * 0.22f, d * 0.38f, jmax (2.0f, d * 0.06f), Colour (0xff3a2a14));
+        }
         return;
     }
     if (style.startsWith ("amp-"))
@@ -101,8 +120,8 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
         knobShadow (g, k);
         if (L.chickenHead)   // pointer knob: round base + long tapered pointer
         {
-            g.setColour (L.knob);
-            g.fillEllipse (k.reduced (k.getWidth() * 0.12f)); inkRing (g, k.reduced (k.getWidth() * 0.12f));
+            g.setGradientFill (ColourGradient (L.knob.brighter (0.2f), k.getX(), k.getY(), L.knob.darker (0.5f), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k.reduced (k.getWidth() * 0.12f));
             Path p; const float r = k.getWidth() / 2;
             p.startNewSubPath (-r * 0.28f, r * 0.35f); p.lineTo (-r * 0.12f, -r * 1.0f); p.quadraticTo (0, -r * 1.12f, r * 0.12f, -r * 1.0f); p.lineTo (r * 0.28f, r * 0.35f); p.closeSubPath();
             p.addEllipse (-r * 0.45f, -r * 0.2f, r * 0.9f, r * 0.9f);
@@ -113,12 +132,12 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
         }
         if (L.id == "black")   // skirted silver knob with black cap
         {
-            g.setColour (Colour (0xffeeeeee));
-            g.fillEllipse (k); inkRing (g, k);
+            g.setGradientFill (ColourGradient (Colour (0xffeeeeee), k.getX(), k.getY(), Colour (0xff7a7a7a), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k);
             for (int i = 0; i < 24; ++i) { const float a = i * MathConstants<float>::twoPi / 24; g.setColour (Colours::black.withAlpha (0.12f));
                 g.drawLine (cx + std::sin (a) * k.getWidth() * 0.36f, cy - std::cos (a) * k.getWidth() * 0.36f, cx + std::sin (a) * k.getWidth() * 0.5f, cy - std::cos (a) * k.getWidth() * 0.5f, 1.0f); }
             auto cap = k.reduced (k.getWidth() * 0.18f);
-            g.setColour (Colour (0xff3a3a3a));
+            g.setGradientFill (ColourGradient (Colour (0xff3a3a3a), cap.getX(), cap.getY(), Colour (0xff050505), cap.getRight(), cap.getBottom(), false));
             g.fillEllipse (cap);
             pointer (k.getWidth() * 0.12f, k.getWidth() * 0.5f, 2.2f, Colours::white);
             return;
@@ -130,10 +149,10 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
             g.setColour (L.accent.withAlpha (0.25f)); g.strokePath (arc, PathStrokeType (5.0f, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour (L.accent); g.strokePath (arc, PathStrokeType (2.0f, PathStrokeType::curved, PathStrokeType::rounded));
         }
-        g.setColour (L.knob);
-        g.fillEllipse (k); inkRing (g, k);
+        g.setGradientFill (ColourGradient (L.knob.brighter (0.35f), k.getX(), k.getY(), L.knob.darker (0.6f), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
         g.setColour (Colours::black.withAlpha (0.5f)); g.drawEllipse (k, 1.0f);
-        if (L.id == "brit") { auto cap = k.reduced (k.getWidth() * 0.22f); g.setColour (L.knobCap); g.fillEllipse (cap); }
+        if (L.id == "brit") { auto cap = k.reduced (k.getWidth() * 0.22f); g.setGradientFill (ColourGradient (L.knobCap.brighter (0.4f), cap.getX(), cap.getY(), L.knobCap.darker (0.4f), cap.getRight(), cap.getBottom(), false)); g.fillEllipse (cap); }
         pointer (k.getWidth() * (L.id == "brit" ? 0.3f : 0.1f), k.getWidth() * 0.5f, 2.2f, L.id == "brit" ? Colour (0xff111111) : (L.id == "lofi" ? Colour (0xff4a3a2a) : Colours::white));
         return;
     }
@@ -146,8 +165,8 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
     knobShadow (g, k);
     if (deco())
     {   // black lacquer with a gold ring and fluted edge
-        g.setColour (Colour (0xff3a3632));
-        g.fillEllipse (k); inkRing (g, k);
+        g.setGradientFill (ColourGradient (Colour (0xff3a3632), k.getX(), k.getY(), Colour (0xff060505), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
         for (int i = 0; i < 20; ++i) { const float a = i * MathConstants<float>::twoPi / 20; g.setColour (col::amber.withAlpha (0.35f));
             g.drawLine (cx + std::sin (a) * k.getWidth() * 0.42f, cy - std::cos (a) * k.getWidth() * 0.42f, cx + std::sin (a) * k.getWidth() * 0.5f, cy - std::cos (a) * k.getWidth() * 0.5f, 1.0f); }
         g.setColour (col::amber); g.drawEllipse (k.reduced (k.getWidth() * 0.08f), 1.2f);
@@ -155,10 +174,10 @@ void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
     }
     else
     {   // brass knob with an engraved leaf on the cap
-        g.setColour (Colour (0xfff0d58a));
-        g.fillEllipse (k); inkRing (g, k);
+        g.setGradientFill (ColourGradient (Colour (0xfff0d58a), k.getX(), k.getY(), Colour (0xff6e4e1e), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
         auto cap = k.reduced (k.getWidth() * 0.16f);
-        g.setColour (Colour (0xff3a5a34));
+        g.setGradientFill (ColourGradient (Colour (0xff3a5a34), cap.getX(), cap.getY(), Colour (0xff142312), cap.getRight(), cap.getBottom(), false));
         g.fillEllipse (cap);
         g.setColour (Colour (0xff2a1c0c).withAlpha (0.6f)); g.drawEllipse (k, 1.0f);
         Path leaf; const float L = cap.getWidth() * 0.32f;
@@ -177,13 +196,13 @@ void Look::drawToggleButton (Graphics& g, ToggleButton& b, bool hl, bool down)
     {
         const float d = jmin (r.getWidth(), r.getHeight()) - 4;
         auto c = r.withSizeKeepingCentre (d, d);
-        g.setColour (col::ink); g.fillEllipse (c.translated (2.5f, 2.5f));
-        g.setColour (Colour (0xffe9e9e9));
+        g.setColour (Colours::black.withAlpha (0.4f)); g.fillEllipse (c.translated (0, 2));
+        g.setGradientFill (ColourGradient (Colour (0xffe9e9e9), c.getX(), c.getY(), Colour (0xff6c6c6c), c.getRight(), c.getBottom(), false));
         g.fillEllipse (c);
         auto inner = c.reduced (d * (down ? 0.2f : 0.16f));
-        g.setColour (Colour (0xff8a8a8a));
+        g.setGradientFill (ColourGradient (Colour (0xff8a8a8a), inner.getX(), inner.getY(), Colour (0xffd8d8d8), inner.getRight(), inner.getBottom(), false));
         g.fillEllipse (inner);
-        g.setColour (col::ink); g.drawEllipse (c, hl ? 2.6f : 2.0f); g.drawEllipse (inner, 1.4f);
+        g.setColour (Colours::black.withAlpha (hl ? 0.5f : 0.3f)); g.drawEllipse (c, 1.0f);
         return;
     }
     r = r.reduced (2);
@@ -246,6 +265,40 @@ void Look::drawPopupMenuBackground (Graphics& g, int w, int h)
     g.setColour (col::line); g.drawRect (0, 0, w, h);
 }
 
+void Look::drawButtonBackground (Graphics& g, Button& b, const Colour&, bool hl, bool down)
+{
+    auto r = b.getLocalBounds().toFloat().reduced (1.5f);
+    const bool on = b.getToggleState();
+    if (deco())
+    {   // lacquer plate with a gold edge; the chosen one shows the colour and a sunburst
+        g.setColour (on ? col::accent2.darker (0.15f) : col::panel.withAlpha (0.92f)); g.fillRect (r);
+        if (on) { Graphics::ScopedSaveState ss (g); g.reduceClipRegion (r.toNearestInt()); decoFan (g, { r.getCentreX(), r.getBottom() + 2 }, r.getHeight() * 1.4f, -1.45f, 1.45f, 18, col::amber.withAlpha (0.35f), 1.0f); }
+        g.setColour (col::amber.withAlpha (hl || on ? 0.95f : 0.55f)); g.drawRect (r, 1.2f);
+        g.drawRect (r.reduced (3), 0.6f);
+        for (auto x : { r.getX() + 3, r.getRight() - 9 }) g.fillRect (x, r.getCentreY() - 3, 6.0f, 6.0f);
+    }
+    else
+    {   // rounded enamel tab with small leaves at the ends
+        g.setColour (on ? col::amber : col::panel.withAlpha (0.92f)); g.fillRoundedRectangle (r, r.getHeight() / 2);
+        g.setColour (col::amber.withAlpha (hl || on ? 1.0f : 0.6f)); g.drawRoundedRectangle (r, r.getHeight() / 2, 1.2f);
+        for (int side = 0; side < 2; ++side)
+        {
+            const float x = side ? r.getRight() - 7 : r.getX() + 7, dir = side ? -1.0f : 1.0f;
+            Path l; l.startNewSubPath (x, r.getCentreY()); l.quadraticTo (x + dir * 4, r.getCentreY() - 5, x + dir * 9, r.getCentreY()); l.quadraticTo (x + dir * 4, r.getCentreY() + 5, x, r.getCentreY());
+            g.setColour ((on ? Colour (0xff3a5a30) : col::accent2).withAlpha (0.9f)); g.fillPath (l);
+        }
+    }
+    if (down) { g.setColour (Colours::black.withAlpha (0.15f)); g.fillRect (r); }
+}
+
+void Look::drawButtonText (Graphics& g, TextButton& b, bool, bool)
+{
+    const bool on = b.getToggleState();
+    g.setColour (on ? (deco() ? Colours::white : Colour (0xff1a1208)) : col::text.withAlpha (0.85f));
+    g.setFont (FontOptions (serifName(), 16.0f, on ? Font::bold | Font::italic : Font::italic));
+    g.drawText (b.getButtonText(), b.getLocalBounds(), Justification::centred);
+}
+
 // ======================= small widgets =======================
 Knob::Knob (APVTS& s, const String& id, const String& caption, const String& style)
 {
@@ -300,31 +353,56 @@ void Pedal::paint (Graphics& g)
 {
     auto r = getLocalBounds().toFloat().reduced (4);
     // shadow + enclosure
-    g.setColour (col::ink); g.fillRoundedRectangle (r.translated (4, 4), 12);
+    g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (r.translated (3, 5), 12);
     if (deco())
     {   // black lacquer case, the effect's colour as an inlaid panel, gold fan behind the name
-        g.setColour (Colour (0xff2a2622));
+        g.setGradientFill (ColourGradient (Colour (0xff2a2622), r.getX(), r.getY(), Colour (0xff070606), r.getRight(), r.getBottom(), false));
         g.fillRoundedRectangle (r, 8);
         auto inlay = r.reduced (9).withTrimmedTop (r.getHeight() * 0.52f).withTrimmedBottom (2);
-        g.setColour (body);
+        g.setGradientFill (ColourGradient (body.brighter (0.15f), inlay.getX(), inlay.getY(), body.darker (0.55f), inlay.getRight(), inlay.getBottom(), false));
         g.fillRect (inlay);
-        { Graphics::ScopedSaveState ss (g); g.reduceClipRegion (inlay.toNearestInt());
-          decoFan (g, { inlay.getCentreX(), inlay.getBottom() + 4 }, inlay.getHeight() * 0.9f, -1.25f, 1.25f, 14, Colours::black.withAlpha (0.28f), 1.2f); }
+        {   // every effect has its own Art Deco motif on the inlay
+            Graphics::ScopedSaveState ss (g); g.reduceClipRegion (inlay.toNearestInt());
+            const auto gold = col::amber.withAlpha (0.42f), dark = Colours::black.withAlpha (0.3f);
+            if (title.contains (U ("Wej")))       decoDiamonds (g, inlay, gold, 13);
+            else if (title.contains (U ("Prze"))) { decoFan (g, { inlay.getCentreX(), inlay.getBottom() + 4 }, inlay.getHeight() * 1.1f, -1.4f, 1.4f, 22, dark, 1.6f); decoSteps (g, inlay.withSizeKeepingCentre (inlay.getWidth() * 0.5f, inlay.getHeight() * 0.6f).withBottomY (inlay.getBottom()), gold, 4); }
+            else if (title.contains (U ("Modul"))) decoWaves (g, inlay, gold, 8);
+            else if (title.contains (U ("Delay"))) decoChevrons (g, inlay, gold, 13, 1.4f);
+            else                                  decoScallops (g, inlay, gold, 11);
+        }
+        // a second colour: a band of dentils above the inlay and the face above it lacquered with a fine sunburst
+        decoBorderDentils (g, Rectangle<float> (inlay.getX(), inlay.getY() - 7, inlay.getWidth(), 4), col::accent2.withAlpha (0.85f), 5);
+        { Graphics::ScopedSaveState ss (g); auto face = r.reduced (9).withBottom (inlay.getY() - 9); g.reduceClipRegion (face.toNearestInt());
+          decoFan (g, { face.getCentreX(), face.getBottom() }, face.getHeight() * 1.2f, -1.5f, 1.5f, 30, col::amber.withAlpha (0.07f), 1.0f); }
         decoFrame (g, r.reduced (3), col::amber.withAlpha (0.85f), 8);
         g.setColour (col::amber.withAlpha (0.8f)); g.drawRect (inlay, 1.0f);
     }
     else
     {   // enamelled case with gold edging and vines in the corners
-        g.setColour (body);
+        g.setGradientFill (ColourGradient (body.brighter (0.3f), r.getX(), r.getY(), body.darker (0.5f), r.getRight(), r.getBottom(), false));
         g.fillRoundedRectangle (r, 14);
         {
             Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (r, 14); g.reduceClipRegion (clip);
             Random rnd (title.hashCode());   // enamel mottling
             for (int i = 0; i < 70; ++i) { g.setColour ((rnd.nextBool() ? Colours::white : Colours::black).withAlpha (0.05f)); g.fillEllipse (r.getX() + rnd.nextFloat() * r.getWidth(), r.getY() + rnd.nextFloat() * r.getHeight(), 6 + rnd.nextFloat() * 18, 4 + rnd.nextFloat() * 10); }
         }
+        {   // every effect has its own Secession motif in the lower half
+            Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (r.reduced (6), 12); g.reduceClipRegion (clip);
+            auto low = r.reduced (10).withTrimmedTop (r.getHeight() * 0.5f);
+            const auto gold = Colour (0xffe2c06a);
+            if (title.contains (U ("Wej")))
+            {   for (int i = 0; i < 2; ++i) lily (g, { low.getX() + low.getWidth() * (i ? 0.88f : 0.12f), low.getBottom() + 4 }, low.getHeight() * 0.85f, Colour (0xfff4ead2).withAlpha (0.55f), Colour (0xff3f6a38).withAlpha (0.7f)); }
+            else if (title.contains (U ("Prze")))
+            {   flower (g, { low.getX() + 22, low.getBottom() - 18 }, 26, Colour (0xffd8452e).withAlpha (0.75f), Colour (0xff2a1a10), 5, 0.3f);
+                flower (g, { low.getRight() - 20, low.getY() + 22 }, 16, Colour (0xfff0b23a).withAlpha (0.7f), Colour (0xff2a1a10), 6, 0.1f); }
+            else if (title.contains (U ("Modul"))) { peacockEye (g, { low.getRight() - 26, low.getBottom() - 26 }, low.getHeight() * 0.3f, 0.35f); peacockEye (g, { low.getX() + 24, low.getBottom() - 22 }, low.getHeight() * 0.24f, -0.4f); }
+            else if (title.contains (U ("Delay"))) whiplash (g, low.reduced (6, 10), gold.withAlpha (0.75f), 4);
+            else { stainedGlass (g, low.withTrimmedTop (low.getHeight() * 0.62f).reduced (2, 0), 7, { 0xff2f6f8a, 0xff4f8a4a, 0xffc8a43a, 0xff8a3a5a, 0xff2a4a7a }, Colour (0xff1c140c), 0.85f);
+                   stainedGlass (g, low.withTrimmedBottom (low.getHeight() * 0.62f).withTrimmedTop (4).reduced (2, 0), 3, { 0xff2f6f8a, 0xff4f8a4a, 0xff2a4a7a }, Colour (0xff1c140c), 0.25f); }
+        }
         nouveauFrame (g, r.reduced (3), Colour (0xffe2c06a), body.darker (0.4f).withSaturation (0.5f), 30);
+        vineBorder (g, r.reduced (14, 6), Colour (0xffe2c06a).withAlpha (0.45f), body.darker (0.5f).withAlpha (0.8f), Colour (0xfff4ead2), 2.5f, 26);
     }
-    g.setColour (col::ink); g.drawRoundedRectangle (r, deco() ? 8.0f : 14.0f, 2.6f);
     // screws
     for (auto p : { r.getTopLeft() + Point<float> (10, 10), r.getTopRight() + Point<float> (-10, 10), r.getBottomLeft() + Point<float> (10, -10), r.getBottomRight() + Point<float> (-10, -10) })
     { g.setColour (deco() ? col::amber : Colour (0xffc9a24a)); g.fillEllipse (Rectangle<float> (5, 5).withCentre (p)); }
@@ -335,8 +413,9 @@ void Pedal::paint (Graphics& g)
     // LED
     const bool on = foot == nullptr || foot->getToggleState();
     auto led = Rectangle<float> (10, 10).withCentre ({ r.getCentreX(), r.getBottom() - 92 });
+    if (on) { g.setColour (Colour (0xffff3b30).withAlpha (0.35f)); g.fillEllipse (led.expanded (5)); }
     g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff4a1a16)); g.fillEllipse (led);
-    g.setColour (col::ink); g.drawEllipse (led, 1.5f);
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawEllipse (led, 1.0f);
     // name
     auto nameArea = Rectangle<float> (r.getX() + 8, r.getBottom() - 78, r.getWidth() - 16, 22);
     const bool light = body.getPerceivedBrightness() > 0.6f;
@@ -402,7 +481,7 @@ void AmpHead::paint (Graphics& g)
     const auto& L = ampLook (lookId);
     auto r = getLocalBounds().toFloat().reduced (4);
     // cabinet body (tolex / tweed)
-    g.setColour (col::ink); g.fillRoundedRectangle (r.translated (4, 4), 14);
+    g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (r.translated (4, 6), 14);
     g.setColour (L.tolex); g.fillRoundedRectangle (r, 14);
     if (L.tweedCloth)
     {
@@ -411,8 +490,11 @@ void AmpHead::paint (Graphics& g)
         for (float x = r.getX(); x < r.getRight() + r.getHeight(); x += 9) { g.setColour (Colour (0xff5a3e1e).withAlpha (0.25f)); g.drawLine (x, r.getBottom(), x - r.getHeight(), r.getY(), 1.0f); }
     }
     else
-    {}
-    g.setColour (col::ink); g.drawRoundedRectangle (r, 14, 3.0f);
+    {   // tolex grain
+        Random rnd (7);
+        for (int i = 0; i < 900; ++i) { g.setColour ((rnd.nextBool() ? Colours::white : Colours::black).withAlpha (0.04f)); g.fillRect (r.getX() + rnd.nextFloat() * r.getWidth(), r.getY() + rnd.nextFloat() * r.getHeight(), 2.0f, 1.0f); }
+    }
+    g.setColour (Colours::black.withAlpha (0.6f)); g.drawRoundedRectangle (r, 14, 1.5f);
     // piping
     g.setColour (L.id == "tweed" ? Colour (0xff3a2a1c) : Colour (0xffcfc6b0).withAlpha (L.id == "modern" ? 0.25f : 0.55f));
     g.drawRoundedRectangle (r.reduced (8), 10, 1.4f);
@@ -421,9 +503,13 @@ void AmpHead::paint (Graphics& g)
     g.setColour (Colour (0xff0d0d0d)); g.fillRoundedRectangle (handle, 5);
     // control panel
     auto panel = r.reduced (22, 0).withTrimmedTop (r.getHeight() * 0.40f).withTrimmedBottom (20);
-    g.setColour (L.panel);
+    g.setGradientFill (ColourGradient (L.panel.brighter (0.18f), panel.getX(), panel.getY(), L.panel.darker (0.25f), panel.getX(), panel.getBottom(), false));
     g.fillRoundedRectangle (panel, 6);
-    g.setColour (col::ink); g.drawRoundedRectangle (panel, 6, 2.2f);
+    if (L.id == "brit" || L.id == "modern")   // brushed metal
+        for (float y = panel.getY() + 2; y < panel.getBottom() - 2; y += 2) { g.setColour (Colours::white.withAlpha (0.035f)); g.drawHorizontalLine ((int) y, panel.getX() + 4, panel.getRight() - 4); }
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawRoundedRectangle (panel, 6, 1.2f);
+    if (deco()) decoBorderDentils (g, Rectangle<float> (panel.getX() + 10, panel.getBottom() - 9, panel.getWidth() - 20, 3), col::amber.withAlpha (0.5f), 4);
+    else vineBorder (g, panel.reduced (6, 4).withTrimmedTop (panel.getHeight() - 14), L.panelText.withAlpha (0.35f), Colour (0xff4f7a45).withAlpha (0.5f), Colour (0xffd8a04a).withAlpha (0.6f), 2.5f, 30);
     // grille / logo area above the panel
     auto grille = r.reduced (22, 0).withTrimmedTop (22).withHeight (r.getHeight() * 0.40f - 30);
     g.setColour (L.grille); g.fillRoundedRectangle (grille, 6);
@@ -432,7 +518,16 @@ void AmpHead::paint (Graphics& g)
         for (float x = grille.getX(); x < grille.getRight(); x += 4) { g.setColour (Colours::black.withAlpha (0.10f)); g.drawVerticalLine ((int) x, grille.getY(), grille.getBottom()); }
         for (float y = grille.getY(); y < grille.getBottom(); y += 4) { g.setColour (Colours::white.withAlpha (0.05f)); g.drawHorizontalLine ((int) y, grille.getX(), grille.getRight()); }
     }
-    g.setColour (col::ink); g.drawRoundedRectangle (grille, 6, 2.2f);
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawRoundedRectangle (grille, 6, 1.0f);
+    {   // the grille cloth carries the studio's pattern, woven in gold thread
+        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (grille.reduced (2).toNearestInt());
+        if (deco()) { decoFan (g, { grille.getX() + 40, grille.getBottom() }, grille.getHeight() * 0.9f, -0.2f, 1.5f, 12, col::amber.withAlpha (0.22f), 1.1f);
+                      decoFan (g, { grille.getRight() - 40, grille.getBottom() }, grille.getHeight() * 0.9f, -1.5f, 0.2f, 12, col::amber.withAlpha (0.22f), 1.1f);
+                      decoChevrons (g, grille.withHeight (14).translated (0, 4), col::amber.withAlpha (0.25f), 10, 1.0f); }
+        else { vineBorder (g, grille.reduced (4, 6), Colour (0xffe2c06a).withAlpha (0.4f), Colour (0xff4f7a45).withAlpha (0.6f), Colour (0xfff4ead2).withAlpha (0.7f), 3.0f, 36);
+               lily (g, { grille.getX() + 34, grille.getBottom() - 4 }, grille.getHeight() * 0.8f, Colour (0xfff4ead2).withAlpha (0.45f), Colour (0xff4f7a45).withAlpha (0.6f));
+               lily (g, { grille.getRight() - 34, grille.getBottom() - 4 }, grille.getHeight() * 0.8f, Colour (0xfff4ead2).withAlpha (0.45f), Colour (0xff4f7a45).withAlpha (0.6f)); }
+    }
     // nameplate behind the model selector
     auto plate = model.getBounds().toFloat().expanded (6, 2);
     g.setColour (L.panel.darker (0.1f).withAlpha (0.92f)); g.fillRoundedRectangle (plate, 6);
@@ -445,9 +540,10 @@ void AmpHead::paint (Graphics& g)
     g.drawText ("INPUT", jack.translated (0, 18).expanded (14, 0).toNearestInt(), Justification::centred);
     g.setColour (Colour (0xffb0b0b0)); g.fillEllipse (jack); g.setColour (Colour (0xff111111)); g.fillEllipse (jack.reduced (6));
     auto jewel = Rectangle<float> (20, 20).withCentre ({ panel.getRight() - 30, panel.getCentreY() - 4 });
-    g.setColour (L.accent);
+    g.setColour (L.accent.withAlpha (0.35f)); g.fillEllipse (jewel.expanded (6));
+    g.setGradientFill (ColourGradient (L.accent.brighter (0.6f), jewel.getX(), jewel.getY(), L.accent.darker (0.4f), jewel.getRight(), jewel.getBottom(), false));
     g.fillEllipse (jewel);
-    g.setColour (Colours::white.withAlpha (0.8f)); g.fillEllipse (jewel.reduced (6).translated (-2, -2).withSize (4, 4)); inkRing (g, jewel);
+    g.setColour (Colours::white.withAlpha (0.5f)); g.fillEllipse (jewel.reduced (6).translated (-2, -2));
     // the studio's own touch: gold inlay with a fan (Art Deco) or vines in the corners (Secession)
     if (deco())
     {
@@ -505,7 +601,7 @@ void Cabinet::paint (Graphics& g)
     static const char* mics[] = { "", "dynamiczny", "wstegowy", "pojemnosciowy", "daleki" };
     const String micFile = String (d ? "deco_mik_" : "sec_mik_") + mics[jlimit (0, 4, m)] + ".png";
     const bool far = m == 4;
-    const float h = cabBox.getHeight() * (far ? 0.36f : 0.48f);
+    const float h = cabBox.getHeight() * (far ? 0.42f : 0.62f);
     auto mb = far ? Rectangle<float> (h * 0.5f, h).withPosition (cabBox.getRight() - h * 0.42f, cabBox.getY() - 2)
                   : Rectangle<float> (h * 0.55f, h).withCentre ({ cabBox.getX() + cabBox.getWidth() * 0.3f, cabBox.getBottom() - h * 0.45f });
     g.setColour (Colours::black.withAlpha (0.3f)); g.fillEllipse (mb.withTrimmedTop (mb.getHeight() - 10).translated (4, 4));
@@ -565,9 +661,9 @@ void RigPage::paint (Graphics& g)
     backdrop (g, getLocalBounds(), deco() ? "deco_wzmacniacze.jpg" : "secesja_sala.jpg", deco() ? 0.22f : 0.2f, 0.5f, 0.55f, this);
     // pedalboard
     auto board = Rectangle<float> (12, 8, (float) getWidth() - 24, 284);
-    g.setColour (col::ink); g.fillRoundedRectangle (board.translated (4, 4), 12);
+    g.setColour (Colours::black.withAlpha (0.4f)); g.fillRoundedRectangle (board.translated (0, 5), 12);
     frosted (g, board, deco() ? 4.0f : 14.0f, this);
-    g.setColour (col::panel.withAlpha (0.62f));
+    g.setGradientFill (ColourGradient (col::panel.withAlpha (0.62f), board.getX(), board.getY(), col::bg.withAlpha (0.75f), board.getX(), board.getBottom(), false));
     g.fillRoundedRectangle (board, deco() ? 4.0f : 14.0f);
     for (float y = board.getY() + 30; y < board.getBottom(); y += 54) { g.setColour (Colours::black.withAlpha (0.3f)); g.fillRect (board.getX() + 10, y, board.getWidth() - 20, 6.0f); }
     if (deco()) decoFrame (g, board.reduced (2), col::amber.withAlpha (0.7f), 12);
@@ -675,7 +771,7 @@ void BandPage::paint (Graphics& g)
     card (g, Rectangle<int> (12, 350, getWidth() - 24, getHeight() - 360).toFloat(), upperPl (U ("Scena")), 0.7f, this);
     {   // a framed picture on the wall: the jazz club poster (Art Deco) or Mucha's "Autumn", 1896 (Secession)
         auto frame = Rectangle<float> ((float) getWidth() - 186, 8, 174, 330);
-        g.setColour (col::ink); g.fillRoundedRectangle (frame.translated (4, 4), deco() ? 2.0f : 10.0f);
+        g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (frame.translated (3, 5), deco() ? 2.0f : 10.0f);
         g.setColour (deco() ? Colour (0xff0b0907) : Colour (0xff3a2a16)); g.fillRoundedRectangle (frame, deco() ? 2.0f : 10.0f);
         drawSprite (g, deco() ? "deco_klub.jpg" : "mucha_jesien.jpg", frame.reduced (12).withTrimmedBottom (14), RectanglePlacement::centred | RectanglePlacement::fillDestination);
         if (deco()) decoFrame (g, frame.reduced (2), col::amber, 8); else nouveauFrame (g, frame.reduced (2), col::amber, col::accent2, 34);
@@ -756,9 +852,9 @@ void SpacePage::paint (Graphics& g)
     auto rack = [&] (Rectangle<int> r, const String& t, const String& sub)
     {
         auto f = r.toFloat();
-        g.setColour (col::ink); g.fillRoundedRectangle (f.translated (4, 4), 6);
+        g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (f.translated (3, 5), 6);
         frosted (g, f, deco() ? 3.0f : 12.0f, this);
-        g.setColour (col::panel2.withAlpha (0.62f));
+        g.setGradientFill (ColourGradient (col::panel2.withAlpha (0.62f), f.getX(), f.getY(), col::panel.darker (0.4f).withAlpha (0.74f), f.getX(), f.getBottom(), false));
         g.fillRoundedRectangle (f, deco() ? 3.0f : 12.0f);
         for (float y = f.getY() + 3; y < f.getBottom() - 3; y += 2) { g.setColour (Colours::white.withAlpha (0.02f)); g.drawHorizontalLine ((int) y, f.getX() + 40, f.getRight() - 40); }
         // rack ears with holes
@@ -768,8 +864,18 @@ void SpacePage::paint (Graphics& g)
             g.setColour (col::amber.withAlpha (0.6f)); g.drawRect (ex + 2, f.getY() + 2, 26.0f, f.getHeight() - 4, 1.0f);
             for (auto hy : { f.getY() + 18, f.getBottom() - 18 }) { g.setColour (Colour (0xff0e0c0a)); g.fillRoundedRectangle (ex + 8, hy - 5, 14, 10, 5); }
         }
-        if (deco()) { decoFrame (g, f.reduced (34, 4), col::amber.withAlpha (0.5f), 8); decoFan (g, { f.getRight() - 46, f.getBottom() - 6 }, 26, -1.57f, 0.0f, 8, col::amber.withAlpha (0.5f)); }
-        else { nouveauCorner (g, { f.getX() + 36, f.getY() + 6 }, 30, 1, 1, col::amber, col::accent2); nouveauCorner (g, { f.getRight() - 36, f.getBottom() - 6 }, 30, -1, -1, col::amber, col::accent2); }
+        if (deco())
+        {
+            decoFrame (g, f.reduced (34, 4), col::amber.withAlpha (0.5f), 8);
+            decoFan (g, { f.getRight() - 46, f.getBottom() - 6 }, 26, -1.57f, 0.0f, 8, col::amber.withAlpha (0.5f));
+            decoChevrons (g, Rectangle<float> (f.getRight() - 340, f.getY() + 12, 280, 10), col::accent2.withAlpha (0.5f), 9, 1.0f);
+            decoBorderDentils (g, Rectangle<float> (f.getX() + 46, f.getBottom() - 12, f.getWidth() - 92, 3), col::amber.withAlpha (0.35f), 5);
+        }
+        else
+        {
+            nouveauCorner (g, { f.getX() + 36, f.getY() + 6 }, 30, 1, 1, col::amber, col::accent2); nouveauCorner (g, { f.getRight() - 36, f.getBottom() - 6 }, 30, -1, -1, col::amber, col::accent2);
+            vineBorder (g, f.reduced (40, 4), col::amber.withAlpha (0.5f), col::accent2.withAlpha (0.75f), Colour (0xffc8553a), 3.0f, 42);
+        }
         g.setColour (col::amber); g.setFont (FontOptions (serifName(), 18.0f, Font::bold | Font::italic));
         g.drawText (t, r.reduced (46, 10).removeFromTop (24), Justification::left);
         g.setColour (col::dim); g.setFont (FontOptions (12.0f));
@@ -798,7 +904,7 @@ void SpacePage::paint (Graphics& g)
         g.setColour (Colour (0xff0d0b09)); g.fillRoundedRectangle (bar, 3);
         const float db = jlimit (-48.0f, 0.0f, Decibels::gainToDecibels (levels[i] + 1e-6f));
         auto fill = bar.reduced (2).withWidth ((bar.getWidth() - 4) * (db + 48) / 48);
-        g.setColour (Colour (0xff3fae5a));
+        g.setGradientFill (ColourGradient (Colour (0xff3fae5a), fill.getX(), 0, Colour (0xffe0a24a), bar.getX() + bar.getWidth() * 0.8f, 0, false));
         g.fillRoundedRectangle (fill, 2);
         g.setColour (col::dim); g.setFont (FontOptions (11.0f)); g.drawText (i ? "R" : "L", bar.withX (bar.getX() - 16).withWidth (14).toNearestInt(), Justification::centred);
     }
@@ -836,6 +942,8 @@ void JesiennaEditor::Header::paint (Graphics& g)
     g.setGradientFill (ColourGradient (ui::col::bg.withAlpha (0.85f), 0, 0, ui::col::bg.withAlpha (0.0f), 520, 0, false));
     g.fillRect (r.withWidth (560));
     g.setColour (ui::col::amber.withAlpha (0.6f)); g.drawHorizontalLine (r.getBottom() - 1, 0, (float) r.getWidth());
+    if (ui::deco()) ui::decoBorderDentils (g, Rectangle<float> (0, (float) r.getBottom() - 6, (float) r.getWidth(), 3), ui::col::amber.withAlpha (0.45f), 5);
+    else ui::vineBorder (g, Rectangle<float> (0, (float) r.getBottom() - 8, (float) r.getWidth(), 8).withTrimmedTop (8), ui::col::amber.withAlpha (0.55f), ui::col::accent2.withAlpha (0.8f), Colour (0xffc8553a), 3.0f, 44);
     if (ui::deco()) ui::decoFan (g, { 400.0f, (float) r.getBottom() }, 70, -1.4f, 1.4f, 16, ui::col::amber.withAlpha (0.35f));
     else ui::nouveauCorner (g, { 4.0f, 4.0f }, 56, 1, 1, ui::col::amber, ui::col::accent2);
     g.setColour (ui::col::amber); g.setFont (FontOptions (ui::serifName(), 30.0f, Font::bold | Font::italic));
