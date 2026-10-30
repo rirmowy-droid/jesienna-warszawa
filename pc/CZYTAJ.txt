@@ -16,6 +16,13 @@ SAMODZIELNA APLIKACJA
 albo Windows Audio (Exclusive Mode) dla małych opóźnień), wejście z gitarą i wyjście. Wycisz "Mute audio input",
 jeśli używasz słuchawek – inaczej aplikacja wycisza wejście, żeby uniknąć sprzężeń z mikrofonu laptopa.
 
+PRAWDZIWE WZMACNIACZE I KOSTKI (NAM)
+Na liście wzmacniaczy, po 7 modelach wbudowanych, jest 30 profili prawdziwych wzmacniaczy (Fender Twin,
+Vox AC15, Magnatone, Marshall JCM/JVM, Friedman, Orange, Mesa, 5150…), a na liście kostek 15 prawdziwych
+przesterów (Tube Screamer, Klon, SD-1, DS-1, HM-2…). To profile Neural Amp Modeler nagrane przez społeczność.
+Własne profile .nam (np. z tone3000.com) wrzuć do Dokumenty\Jesienna Warszawa\NAM (kostki: podfolder Kostki)
+i otwórz wtyczkę ponownie – pojawią się na końcu listy, głośność wyrówna się sama.
+
 DANE
 IR-y kolumn, przestrzenie i sample zespołu są w C:\ProgramData\Jesienna Warszawa.
-Licencje dźwięków: plik LICENCJE.md w tym folderze. Kod wtyczki: AGPL v3 (LICENSE.txt).
+Licencje dźwięków: plik LICENCJE.md w tym folderze; profile NAM: nam\ZRODLO.md (GPL v3). Kod wtyczki: AGPL v3 (LICENSE.txt).

@@ -4,6 +4,10 @@
 
 namespace jw {
 
+/** Source files are UTF-8; JUCE treats plain char literals as ASCII, so Polish text goes through this. */
+inline juce::String U (const char* s) { return juce::String::fromUTF8 (s); }
+inline juce::StringArray U (std::initializer_list<const char*> l) { juce::StringArray a; for (auto* s : l) a.add (U (s)); return a; }
+
 inline juce::File dataDir()
 {
     juce::Array<juce::File> candidates {
@@ -27,6 +31,43 @@ inline juce::File dataDir()
 
 struct IrEntry { juce::String name, group; juce::File file; };
 
+/** Captured amps / pedals (Neural Amp Modeler profiles). */
+struct NamEntry { juce::String name, style, look; juce::File file; float trimDb = 0; };
+/** The player's own profiles: Documents/Jesienna Warszawa/NAM (amps) and NAM/Kostki (pedals). */
+inline juce::File userNamDir()
+{
+    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("Jesienna Warszawa").getChildFile ("NAM");
+}
+
+inline juce::Array<NamEntry> listNam (const juce::String& kind)
+{
+    juce::Array<NamEntry> out;
+    auto dir = dataDir();
+    if (dir.exists())
+    {
+        auto json = juce::JSON::parse (dir.getChildFile ("nam/nam.json"));
+        if (auto* arr = json.getArray())
+            for (auto& v : *arr)
+                if (v["kind"].toString() == kind)
+                    out.add ({ v["name"].toString(), v["style"].toString(), v["look"].toString(), dir.getChildFile (v["file"].toString()), (float) v["trim"] });
+    }
+    // own files, levelled automatically when loaded (trim = NaN)
+    auto user = kind == "pedal" ? userNamDir().getChildFile ("Kostki") : userNamDir();
+    if (! userNamDir().exists())
+    {
+        userNamDir().getChildFile ("Kostki").createDirectory();
+        userNamDir().getChildFile ("CZYTAJ.txt").replaceWithText (juce::String::fromUTF8 (
+            "Wrzuć tu własne profile wzmacniaczy w formacie .nam (np. z tone3000.com), a profile kostek do podfolderu Kostki.\r\n"
+            "Po ponownym otwarciu wtyczki pojawią się na końcu listy wzmacniaczy / kostek. Głośność wyrównuje się sama.\r\n"
+            "Używaj profili samego wzmacniacza (bez kolumny) – kolumnę wybierasz osobno.\r\n"));
+    }
+    auto files = user.findChildFiles (juce::File::findFiles, false, "*.nam");
+    files.sort();
+    for (auto& f : files)
+        out.add ({ f.getFileNameWithoutExtension(), juce::String::fromUTF8 ("twój profil"), kind == "pedal" ? "black" : "boutique", f, std::numeric_limits<float>::quiet_NaN() });
+    return out;
+}
+
 inline juce::Array<IrEntry> listCabs()
 {
     juce::Array<IrEntry> out;
@@ -49,7 +90,7 @@ inline juce::Array<IrEntry> listRooms()
                 out.add ({ v["name"].toString(), v["group"].toString(),
                            dir.getChildFile ("rooms").getChildFile (juce::File (v["file"].toString()).getFileName()) });
     auto tube = dir.getChildFile ("rooms/sprezyna_lampowa.wav");
-    if (tube.existsAsFile()) out.add ({ "Sprężyna lampowa (Fisher K-10)", "Pogłosy sprzętowe", tube });
+    if (tube.existsAsFile()) out.add ({ U ("Sprężyna lampowa (Fisher K-10)"), U ("Pogłosy sprzętowe"), tube });
     return out;
 }
 

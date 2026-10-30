@@ -1,239 +1,966 @@
 #include "PluginEditor.h"
+using jw::U;
+
+namespace ui {
+
+// ======================= looks of the amp heads =======================
+const AmpLook& ampLook (const String& id)
+{
+    static const std::vector<AmpLook> looks {
+        // id        tolex                panel               panelText          knob                knobCap              grille               accent
+        { "black",   Colour (0xff141414), Colour (0xff111111), Colour (0xffe8e8e8), Colour (0xffc9c9c9), Colour (0xff101010), Colour (0xff8d8f8c), Colour (0xffd8263a), false, true },
+        { "tweed",   Colour (0xffc9b07a), Colour (0xff5b4632), Colour (0xfff1e4c6), Colour (0xffece0c2), Colour (0xff3a2a1c), Colour (0xff6e3328), Colour (0xffe35a2a), true,  true, true },
+        { "vox",     Colour (0xff181614), Colour (0xffa86a3c), Colour (0xff1c120a), Colour (0xfff0e6d0), Colour (0xff2a1c12), Colour (0xff5e4430), Colour (0xffdb3a2a), true,  false },
+        { "brit",    Colour (0xff141414), Colour (0xffc8a447), Colour (0xff16120a), Colour (0xff121212), Colour (0xffd6b55a), Colour (0xffb9ad91), Colour (0xffe0e0e0), false, true },
+        { "boutique",Colour (0xff1a1715), Colour (0xffe6dcc6), Colour (0xff1c1a17), Colour (0xff151515), Colour (0xffd8d0bf), Colour (0xff3b3532), Colour (0xff3fa36a), false, true },
+        { "modern",  Colour (0xff111214), Colour (0xff2a2e34), Colour (0xffd2d8de), Colour (0xff17181b), Colour (0xff4aa8ff), Colour (0xff1d1e21), Colour (0xff4aa8ff), false, false },
+        { "lofi",    Colour (0xffd8ccb0), Colour (0xff6d5a44), Colour (0xfff3ead6), Colour (0xffe6dcc3), Colour (0xff6d5a44), Colour (0xffbfb294), Colour (0xffff9a3c), false, false },
+    };
+    for (auto& l : looks) if (l.id == id) return l;
+    return looks[0];
+}
+
+static const char* builtInLooks[] = { "black", "boutique", "tweed", "vox", "brit", "modern", "lofi" };
+
+/** Georgia on Windows/macOS; on systems without it the default serif (a missing name must never reach the text shaper). */
+static String serifName()
+{
+    static const String name = [] { auto all = Font::findAllTypefaceNames(); for (auto* n : { "Georgia", "DejaVu Serif", "Liberation Serif" }) if (all.contains (n)) return String (n); return Font::getDefaultSerifFontName(); }();
+    return name;
+}
+
+// ======================= look & feel =======================
+Look::Look()
+{
+    setColour (ResizableWindow::backgroundColourId, col::bg);
+    setColour (Label::textColourId, col::text.withAlpha (0.85f));
+    setColour (ComboBox::backgroundColourId, col::panel2);
+    setColour (ComboBox::outlineColourId, col::line);
+    setColour (ComboBox::textColourId, col::text);
+    setColour (ComboBox::arrowColourId, col::amber);
+    setColour (PopupMenu::backgroundColourId, Colour (0xff1e1814));
+    setColour (PopupMenu::highlightedBackgroundColourId, col::amber.withAlpha (0.3f));
+    setColour (PopupMenu::textColourId, col::text);
+    setColour (PopupMenu::highlightedTextColourId, Colours::white);
+    setColour (TextButton::buttonColourId, col::panel);
+    setColour (TextButton::buttonOnColourId, col::amber);
+    setColour (TextButton::textColourOffId, col::dim);
+    setColour (TextButton::textColourOnId, Colour (0xff1a1410));
+    setColour (BubbleComponent::backgroundColourId, Colour (0xf0201a16));
+    setColour (BubbleComponent::outlineColourId, col::amber);
+    setColour (TooltipWindow::textColourId, col::text);
+}
+
+static void knobShadow (Graphics& g, Rectangle<float> c)
+{
+    g.setColour (Colours::black.withAlpha (0.35f));
+    g.fillEllipse (c.translated (0, c.getHeight() * 0.06f));
+}
+
+void Look::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float a0, float a1, Slider& s)
+{
+    const String style = s.getProperties()["style"].toString();
+    auto area = Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (3);
+    const float d = jmin (area.getWidth(), area.getHeight());
+    auto c = area.withSizeKeepingCentre (d, d);
+    const float ang = a0 + pos * (a1 - a0);
+    const auto cx = c.getCentreX(), cy = c.getCentreY();
+    auto pointer = [&] (float r0, float r1, float thick, Colour colr)
+    {
+        Path p; p.addRoundedRectangle (-thick / 2, -r1, thick, r1 - r0, thick / 2);
+        g.setColour (colr); g.fillPath (p, AffineTransform::rotation (ang).translated (cx, cy));
+    };
+
+    if (style == "pedal")
+    {
+        auto k = c.reduced (d * 0.1f);
+        knobShadow (g, k);
+        g.setGradientFill (ColourGradient (Colour (0xff3a3a3a), k.getX(), k.getY(), Colour (0xff0c0c0c), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
+        g.setColour (Colour (0xff5a5a5a)); g.drawEllipse (k, 1.0f);
+        g.setColour (Colours::white.withAlpha (0.12f)); g.fillEllipse (k.reduced (k.getWidth() * 0.25f).translated (-k.getWidth() * 0.08f, -k.getWidth() * 0.1f));
+        pointer (d * 0.05f, d * 0.38f, jmax (2.0f, d * 0.06f), Colours::white);
+        return;
+    }
+    if (style.startsWith ("amp-"))
+    {
+        const auto& L = ampLook (style.fromFirstOccurrenceOf ("amp-", false, false));
+        if (L.numbers)   // 1..10 scale printed on the panel
+        {
+            g.setColour (L.panelText.withAlpha (0.7f)); g.setFont (FontOptions (d * 0.13f));
+            for (int i = 0; i <= 10; ++i)
+            {
+                const float a = a0 + (a1 - a0) * i / 10.0f, r = d * 0.5f;
+                auto pt = Point<float> (cx + std::sin (a) * r, cy - std::cos (a) * r);
+                if (i % 2 == 0) g.drawText (String (i == 0 ? 1 : i), Rectangle<float> (d * 0.2f, d * 0.16f).withCentre (pt), Justification::centred);
+                else g.fillEllipse (Rectangle<float> (2, 2).withCentre (pt));
+            }
+        }
+        auto k = c.reduced (d * (L.numbers ? 0.2f : 0.12f));
+        knobShadow (g, k);
+        if (L.chickenHead)   // pointer knob: round base + long tapered pointer
+        {
+            g.setGradientFill (ColourGradient (L.knob.brighter (0.2f), k.getX(), k.getY(), L.knob.darker (0.5f), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k.reduced (k.getWidth() * 0.12f));
+            Path p; const float r = k.getWidth() / 2;
+            p.startNewSubPath (-r * 0.28f, r * 0.35f); p.lineTo (-r * 0.12f, -r * 1.0f); p.quadraticTo (0, -r * 1.12f, r * 0.12f, -r * 1.0f); p.lineTo (r * 0.28f, r * 0.35f); p.closeSubPath();
+            p.addEllipse (-r * 0.45f, -r * 0.2f, r * 0.9f, r * 0.9f);
+            g.setColour (L.knob); g.fillPath (p, AffineTransform::rotation (ang).translated (cx, cy));
+            g.setColour (L.knobCap.withAlpha (0.8f)); g.strokePath (p, PathStrokeType (1.0f), AffineTransform::rotation (ang).translated (cx, cy));
+            pointer (r * 0.35f, r * 0.95f, 2.0f, L.knobCap);
+            return;
+        }
+        if (L.id == "black")   // skirted silver knob with black cap
+        {
+            g.setGradientFill (ColourGradient (Colour (0xffeeeeee), k.getX(), k.getY(), Colour (0xff7a7a7a), k.getRight(), k.getBottom(), false));
+            g.fillEllipse (k);
+            for (int i = 0; i < 24; ++i) { const float a = i * MathConstants<float>::twoPi / 24; g.setColour (Colours::black.withAlpha (0.12f));
+                g.drawLine (cx + std::sin (a) * k.getWidth() * 0.36f, cy - std::cos (a) * k.getWidth() * 0.36f, cx + std::sin (a) * k.getWidth() * 0.5f, cy - std::cos (a) * k.getWidth() * 0.5f, 1.0f); }
+            auto cap = k.reduced (k.getWidth() * 0.18f);
+            g.setGradientFill (ColourGradient (Colour (0xff3a3a3a), cap.getX(), cap.getY(), Colour (0xff050505), cap.getRight(), cap.getBottom(), false));
+            g.fillEllipse (cap);
+            pointer (k.getWidth() * 0.12f, k.getWidth() * 0.5f, 2.2f, Colours::white);
+            return;
+        }
+        // plain knobs (brit / boutique / modern / lofi), optional coloured cap or LED ring
+        if (L.id == "modern")
+        {
+            Path arc; arc.addCentredArc (cx, cy, d * 0.47f, d * 0.47f, 0, a0, ang, true);
+            g.setColour (L.accent.withAlpha (0.25f)); g.strokePath (arc, PathStrokeType (5.0f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour (L.accent); g.strokePath (arc, PathStrokeType (2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+        g.setGradientFill (ColourGradient (L.knob.brighter (0.35f), k.getX(), k.getY(), L.knob.darker (0.6f), k.getRight(), k.getBottom(), false));
+        g.fillEllipse (k);
+        g.setColour (Colours::black.withAlpha (0.5f)); g.drawEllipse (k, 1.0f);
+        if (L.id == "brit") { auto cap = k.reduced (k.getWidth() * 0.22f); g.setGradientFill (ColourGradient (L.knobCap.brighter (0.4f), cap.getX(), cap.getY(), L.knobCap.darker (0.4f), cap.getRight(), cap.getBottom(), false)); g.fillEllipse (cap); }
+        pointer (k.getWidth() * (L.id == "brit" ? 0.3f : 0.1f), k.getWidth() * 0.5f, 2.2f, L.id == "brit" ? Colour (0xff111111) : (L.id == "lofi" ? Colour (0xff4a3a2a) : Colours::white));
+        return;
+    }
+    // default / rack: amber arc
+    auto k = c.reduced (d * 0.14f);
+    Path bgArc; bgArc.addCentredArc (cx, cy, d * 0.46f, d * 0.46f, 0, a0, a1, true);
+    g.setColour (Colour (0xff3a2f28)); g.strokePath (bgArc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    Path arc; arc.addCentredArc (cx, cy, d * 0.46f, d * 0.46f, 0, a0, ang, true);
+    g.setColour (col::amber); g.strokePath (arc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    knobShadow (g, k);
+    g.setGradientFill (ColourGradient (Colour (0xff3b302a), k.getX(), k.getY(), Colour (0xff1a1512), k.getRight(), k.getBottom(), false));
+    g.fillEllipse (k);
+    g.setColour (col::line); g.drawEllipse (k, 1.0f);
+    pointer (d * 0.08f, d * 0.34f, 2.5f, Colour (0xfff2e6d8));
+}
+
+void Look::drawToggleButton (Graphics& g, ToggleButton& b, bool hl, bool down)
+{
+    const String style = b.getProperties()["style"].toString();
+    auto r = b.getLocalBounds().toFloat();
+    const bool on = b.getToggleState();
+    if (style == "foot")   // metal footswitch
+    {
+        const float d = jmin (r.getWidth(), r.getHeight()) - 4;
+        auto c = r.withSizeKeepingCentre (d, d);
+        g.setColour (Colours::black.withAlpha (0.4f)); g.fillEllipse (c.translated (0, 2));
+        g.setGradientFill (ColourGradient (Colour (0xffe9e9e9), c.getX(), c.getY(), Colour (0xff6c6c6c), c.getRight(), c.getBottom(), false));
+        g.fillEllipse (c);
+        auto inner = c.reduced (d * (down ? 0.2f : 0.16f));
+        g.setGradientFill (ColourGradient (Colour (0xff8a8a8a), inner.getX(), inner.getY(), Colour (0xffd8d8d8), inner.getRight(), inner.getBottom(), false));
+        g.fillEllipse (inner);
+        g.setColour (Colours::black.withAlpha (hl ? 0.5f : 0.3f)); g.drawEllipse (c, 1.0f);
+        return;
+    }
+    r = r.reduced (2);
+    g.setColour (on ? col::amber.withAlpha (0.9f) : col::panel2); g.fillRoundedRectangle (r, r.getHeight() / 2);
+    g.setColour (hl ? col::amber : col::line); g.drawRoundedRectangle (r, r.getHeight() / 2, 1.2f);
+    auto dot = r.removeFromLeft (r.getHeight()).reduced (r.getHeight() * 0.3f);
+    g.setColour (on ? Colour (0xff1a1410) : col::dim); g.fillEllipse (dot);
+    g.setColour (on ? Colour (0xff1a1410) : col::text); g.setFont (FontOptions (14.0f, Font::bold));
+    g.drawFittedText (b.getButtonText(), r.toNearestInt().withTrimmedRight (8), Justification::centredLeft, 1);
+}
+
+void Look::drawComboBox (Graphics& g, int w, int h, bool, int, int, int, int, ComboBox& box)
+{
+    const String style = box.getProperties()["style"].toString();
+    auto r = Rectangle<float> (0, 0, (float) w, (float) h);
+    if (style == "plate")   // nameplate on the amp: no box, just an arrow
+    {
+        auto c = box.findColour (ComboBox::textColourId);
+        Path p; const float ax = (float) w - 14, ay = (float) h / 2;
+        p.addTriangle (ax - 5, ay - 3, ax + 5, ay - 3, ax, ay + 4);
+        g.setColour (c.withAlpha (0.8f)); g.fillPath (p);
+        return;
+    }
+    if (style == "lcd")
+    {
+        g.setColour (Colour (0xff0d1410)); g.fillRoundedRectangle (r, 4);
+        g.setColour (Colour (0xff2c3a30)); g.drawRoundedRectangle (r.reduced (0.5f), 4, 1.0f);
+        Path p; const float ax = (float) w - 14, ay = (float) h / 2;
+        p.addTriangle (ax - 5, ay - 3, ax + 5, ay - 3, ax, ay + 4);
+        g.setColour (Colour (0xff9df2b4).withAlpha (0.7f)); g.fillPath (p);
+        return;
+    }
+    g.setColour (box.findColour (ComboBox::backgroundColourId)); g.fillRoundedRectangle (r, 5);
+    g.setColour (box.findColour (ComboBox::outlineColourId)); g.drawRoundedRectangle (r.reduced (0.5f), 5, 1.0f);
+    Path p; const float ax = (float) w - 13, ay = (float) h / 2;
+    p.addTriangle (ax - 4.5f, ay - 2.5f, ax + 4.5f, ay - 2.5f, ax, ay + 3.5f);
+    g.setColour (box.findColour (ComboBox::arrowColourId)); g.fillPath (p);
+}
+
+Font Look::getComboBoxFont (ComboBox& box)
+{
+    const String style = box.getProperties()["style"].toString();
+    if (style == "plate") return Font (FontOptions (serifName(), jmin (26.0f, box.getHeight() * 0.7f), Font::bold | Font::italic));
+    if (style == "lcd") return Font (FontOptions (Font::getDefaultMonospacedFontName(), jmin (17.0f, box.getHeight() * 0.55f), Font::bold));
+    return Font (FontOptions (jmin (15.0f, box.getHeight() * 0.55f)));
+}
+
+void Look::positionComboBoxText (ComboBox& box, Label& label)
+{
+    label.setBounds (6, 1, box.getWidth() - 26, box.getHeight() - 2);
+    label.setFont (getComboBoxFont (box));
+    const String style = box.getProperties()["style"].toString();
+    label.setJustificationType (style == "plate" ? Justification::centred : Justification::centredLeft);
+    if (style == "lcd") label.setColour (Label::textColourId, Colour (0xff9df2b4));
+}
+
+void Look::drawPopupMenuBackground (Graphics& g, int w, int h)
+{
+    g.fillAll (findColour (PopupMenu::backgroundColourId));
+    g.setColour (col::line); g.drawRect (0, 0, w, h);
+}
+
+// ======================= small widgets =======================
+Knob::Knob (APVTS& s, const String& id, const String& caption, const String& style)
+{
+    slider.getProperties().set ("style", style);
+    slider.setPopupDisplayEnabled (true, true, nullptr, 1500);
+    slider.setRotaryParameters (MathConstants<float>::pi * 1.2f, MathConstants<float>::pi * 2.8f, true);
+    att = std::make_unique<APVTS::SliderAttachment> (s, id, slider);
+    if (auto* p = dynamic_cast<RangedAudioParameter*> (s.getParameter (id)))
+        slider.setDoubleClickReturnValue (true, p->convertFrom0to1 (p->getDefaultValue()));
+    label.setText (caption, dontSendNotification);
+    label.setJustificationType (Justification::centred);
+    label.setFont (FontOptions (13.0f, Font::bold));
+    label.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (slider); addAndMakeVisible (label);
+}
+
+void Knob::resized()
+{
+    auto r = getLocalBounds();
+    label.setBounds (r.removeFromBottom (18));
+    slider.setBounds (r);
+}
+
+Choice::Choice (APVTS& s, const String& id, const String& style)
+{
+    getProperties().set ("style", style);
+    if (auto* c = dynamic_cast<AudioParameterChoice*> (s.getParameter (id))) addItemList (c->choices, 1);
+    att = std::make_unique<APVTS::ComboBoxAttachment> (s, id, *this);
+}
+
+Switch::Switch (APVTS& s, const String& id, const String& text, const String& style) : ToggleButton (text)
+{
+    getProperties().set ("style", style);
+    att = std::make_unique<APVTS::ButtonAttachment> (s, id, *this);
+}
+
+// ======================= pedal =======================
+Pedal::Pedal (APVTS& s, const String& t, Colour c, const String& switchId, const String& typeId, std::vector<std::pair<String, String>> ks)
+    : title (t), body (c)
+{
+    if (switchId.isNotEmpty()) { foot = std::make_unique<Switch> (s, switchId, String(), "foot"); addAndMakeVisible (*foot); foot->onStateChange = [this] { repaint(); }; }
+    if (typeId.isNotEmpty()) { type = std::make_unique<Choice> (s, typeId); addAndMakeVisible (*type); }
+    for (auto& [id, cap] : ks)
+    {
+        auto* k = knobs.add (new Knob (s, id, cap, "pedal"));
+        k->setCaptionColour (Colours::white.withAlpha (0.9f));
+        addAndMakeVisible (k);
+    }
+}
+
+void Pedal::paint (Graphics& g)
+{
+    auto r = getLocalBounds().toFloat().reduced (4);
+    // shadow + enclosure
+    g.setColour (Colours::black.withAlpha (0.45f)); g.fillRoundedRectangle (r.translated (3, 5), 12);
+    g.setGradientFill (ColourGradient (body.brighter (0.25f), r.getX(), r.getY(), body.darker (0.45f), r.getRight(), r.getBottom(), false));
+    g.fillRoundedRectangle (r, 12);
+    g.setColour (Colours::white.withAlpha (0.18f)); g.drawRoundedRectangle (r.reduced (1.5f), 11, 1.2f);
+    g.setColour (Colours::black.withAlpha (0.35f)); g.drawRoundedRectangle (r, 12, 1.0f);
+    // screws
+    for (auto p : { r.getTopLeft() + Point<float> (10, 10), r.getTopRight() + Point<float> (-10, 10), r.getBottomLeft() + Point<float> (10, -10), r.getBottomRight() + Point<float> (-10, -10) })
+    { g.setColour (Colour (0xff9a9a9a)); g.fillEllipse (Rectangle<float> (6, 6).withCentre (p)); g.setColour (Colour (0xff444444)); g.drawLine (p.x - 2, p.y, p.x + 2, p.y, 1.0f); }
+    // side jacks
+    g.setColour (Colour (0xff2a2a2a));
+    g.fillRect (Rectangle<float> (6, 16).withCentre ({ r.getX() - 1, r.getY() + 46 }));
+    g.fillRect (Rectangle<float> (6, 16).withCentre ({ r.getRight() + 1, r.getY() + 46 }));
+    // LED
+    const bool on = foot == nullptr || foot->getToggleState();
+    auto led = Rectangle<float> (10, 10).withCentre ({ r.getCentreX(), r.getBottom() - 92 });
+    if (on) { g.setColour (Colour (0xffff3b30).withAlpha (0.35f)); g.fillEllipse (led.expanded (5)); }
+    g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff4a1a16)); g.fillEllipse (led);
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawEllipse (led, 1.0f);
+    // name
+    auto nameArea = Rectangle<float> (r.getX() + 8, r.getBottom() - 78, r.getWidth() - 16, 22);
+    const bool light = body.getPerceivedBrightness() > 0.6f;
+    g.setColour (light ? Colour (0xff1a1410) : Colours::white.withAlpha (0.92f));
+    g.setFont (FontOptions (serifName(), 17.0f, Font::bold | Font::italic));
+    g.drawFittedText (title, nameArea.toNearestInt(), Justification::centred, 1);
+}
+
+void Pedal::resized()
+{
+    auto r = getLocalBounds().reduced (14, 12);
+    if (type != nullptr) type->setBounds (r.removeFromTop (26).reduced (4, 0));
+    r.removeFromTop (4);
+    auto knobRow = r.removeFromTop (r.getHeight() - 104);
+    const int n = knobs.size();
+    if (n > 0)
+    {
+        const int kw = jmin (78, knobRow.getWidth() / jmax (1, (n > 3 ? 2 : n)));
+        if (n <= 3)
+        {
+            auto row = knobRow.withSizeKeepingCentre (kw * n, jmin (knobRow.getHeight(), kw + 16));
+            for (auto* k : knobs) k->setBounds (row.removeFromLeft (kw));
+        }
+        else
+        {
+            auto top = knobRow.removeFromTop (knobRow.getHeight() / 2);
+            auto a = top.withSizeKeepingCentre (kw * 2, top.getHeight()), b = knobRow.withSizeKeepingCentre (kw * (n - 2), knobRow.getHeight());
+            for (int i = 0; i < n; ++i) knobs[i]->setBounds (i < 2 ? a.removeFromLeft (kw) : b.removeFromLeft (kw));
+        }
+    }
+    if (foot != nullptr) foot->setBounds (getLocalBounds().withSizeKeepingCentre (52, 52).withY (getHeight() - 66));
+}
+
+// ======================= amp head =======================
+AmpHead::AmpHead (JesiennaProcessor& p) : proc (p), model (p.apvts, "amp", "plate")
+{
+    addAndMakeVisible (model);
+    const std::pair<const char*, const char*> ks[] = { { "ampGain", "Gain" }, { "bass", "Bas" }, { "mid", "Środek" }, { "treble", "Góra" }, { "presence", "Presence" }, { "master", "Master" } };
+    for (auto& [id, cap] : ks) { auto* k = knobs.add (new Knob (p.apvts, id, U (cap))); addAndMakeVisible (k); }
+    model.onChange = [this] { refresh(); };
+    refresh();
+}
+
+void AmpHead::refresh()
+{
+    const int a = model.getSelectedItemIndex();
+    if (a >= 0 && a < jw::builtInAmps) { lookId = builtInLooks[a]; static const char* cats[] = { "czysty", "czysty", "crunch", "crunch", "lead", "ciężki", "lo-fi" }; category = U ("model wbudowany · ") + U (cats[a]); }
+    else if (a >= jw::builtInAmps && a - jw::builtInAmps < proc.namAmps.size())
+    {
+        auto& e = proc.namAmps.getReference (a - jw::builtInAmps);
+        lookId = e.look; category = U ("prawdziwy wzmacniacz (profil NAM) · ") + e.style;
+    }
+    const auto& L = ampLook (lookId);
+    for (auto* k : knobs) { k->setStyle ("amp-" + lookId); k->setCaptionColour (L.panelText); }
+    model.setColour (ComboBox::textColourId, L.panelText);
+    if (auto* parent = getParentComponent()) parent->repaint();
+    repaint();
+}
+
+void AmpHead::paint (Graphics& g)
+{
+    const auto& L = ampLook (lookId);
+    auto r = getLocalBounds().toFloat().reduced (4);
+    // cabinet body (tolex / tweed)
+    g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (r.translated (4, 6), 14);
+    g.setColour (L.tolex); g.fillRoundedRectangle (r, 14);
+    if (L.tweedCloth)
+    {
+        Graphics::ScopedSaveState ss (g); Path clip; clip.addRoundedRectangle (r, 14); g.reduceClipRegion (clip);
+        for (float x = r.getX() - r.getHeight(); x < r.getRight(); x += 5) { g.setColour (Colour (0xff8a6a3a).withAlpha (0.45f)); g.drawLine (x, r.getBottom(), x + r.getHeight(), r.getY(), 1.4f); }
+        for (float x = r.getX(); x < r.getRight() + r.getHeight(); x += 9) { g.setColour (Colour (0xff5a3e1e).withAlpha (0.25f)); g.drawLine (x, r.getBottom(), x - r.getHeight(), r.getY(), 1.0f); }
+    }
+    else
+    {   // tolex grain
+        Random rnd (7);
+        for (int i = 0; i < 900; ++i) { g.setColour ((rnd.nextBool() ? Colours::white : Colours::black).withAlpha (0.04f)); g.fillRect (r.getX() + rnd.nextFloat() * r.getWidth(), r.getY() + rnd.nextFloat() * r.getHeight(), 2.0f, 1.0f); }
+    }
+    g.setColour (Colours::black.withAlpha (0.6f)); g.drawRoundedRectangle (r, 14, 1.5f);
+    // piping
+    g.setColour (L.id == "tweed" ? Colour (0xff3a2a1c) : Colour (0xffcfc6b0).withAlpha (L.id == "modern" ? 0.25f : 0.55f));
+    g.drawRoundedRectangle (r.reduced (8), 10, 1.4f);
+    // handle on top
+    auto handle = Rectangle<float> (r.getCentreX() - 70, r.getY() - 2, 140, 10);
+    g.setColour (Colour (0xff0d0d0d)); g.fillRoundedRectangle (handle, 5);
+    // control panel
+    auto panel = r.reduced (22, 0).withTrimmedTop (r.getHeight() * 0.40f).withTrimmedBottom (20);
+    g.setGradientFill (ColourGradient (L.panel.brighter (0.18f), panel.getX(), panel.getY(), L.panel.darker (0.25f), panel.getX(), panel.getBottom(), false));
+    g.fillRoundedRectangle (panel, 6);
+    if (L.id == "brit" || L.id == "modern")   // brushed metal
+        for (float y = panel.getY() + 2; y < panel.getBottom() - 2; y += 2) { g.setColour (Colours::white.withAlpha (0.035f)); g.drawHorizontalLine ((int) y, panel.getX() + 4, panel.getRight() - 4); }
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawRoundedRectangle (panel, 6, 1.2f);
+    // grille / logo area above the panel
+    auto grille = r.reduced (22, 0).withTrimmedTop (22).withHeight (r.getHeight() * 0.40f - 30);
+    g.setColour (L.grille); g.fillRoundedRectangle (grille, 6);
+    {
+        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (grille.toNearestInt());
+        for (float x = grille.getX(); x < grille.getRight(); x += 4) { g.setColour (Colours::black.withAlpha (0.10f)); g.drawVerticalLine ((int) x, grille.getY(), grille.getBottom()); }
+        for (float y = grille.getY(); y < grille.getBottom(); y += 4) { g.setColour (Colours::white.withAlpha (0.05f)); g.drawHorizontalLine ((int) y, grille.getX(), grille.getRight()); }
+    }
+    g.setColour (Colours::black.withAlpha (0.5f)); g.drawRoundedRectangle (grille, 6, 1.0f);
+    // nameplate behind the model selector
+    auto plate = model.getBounds().toFloat().expanded (6, 2);
+    g.setColour (L.panel.darker (0.1f).withAlpha (0.92f)); g.fillRoundedRectangle (plate, 6);
+    g.setColour (L.panelText.withAlpha (0.35f)); g.drawRoundedRectangle (plate, 6, 1.0f);
+    g.setColour (L.panelText.withAlpha (0.75f)); g.setFont (FontOptions (12.0f));
+    g.drawText (category, plate.translated (0, plate.getHeight() + 2).withHeight (16).toNearestInt(), Justification::centred);
+    // input jack, pilot light
+    g.setColour (L.panelText.withAlpha (0.8f)); g.setFont (FontOptions (11.0f, Font::bold));
+    auto jack = Rectangle<float> (22, 22).withCentre ({ panel.getX() + 30, panel.getCentreY() - 4 });
+    g.drawText ("INPUT", jack.translated (0, 18).expanded (14, 0).toNearestInt(), Justification::centred);
+    g.setColour (Colour (0xffb0b0b0)); g.fillEllipse (jack); g.setColour (Colour (0xff111111)); g.fillEllipse (jack.reduced (6));
+    auto jewel = Rectangle<float> (20, 20).withCentre ({ panel.getRight() - 30, panel.getCentreY() - 4 });
+    g.setColour (L.accent.withAlpha (0.35f)); g.fillEllipse (jewel.expanded (6));
+    g.setGradientFill (ColourGradient (L.accent.brighter (0.6f), jewel.getX(), jewel.getY(), L.accent.darker (0.4f), jewel.getRight(), jewel.getBottom(), false));
+    g.fillEllipse (jewel);
+    g.setColour (Colours::white.withAlpha (0.5f)); g.fillEllipse (jewel.reduced (6).translated (-2, -2));
+}
+
+void AmpHead::resized()
+{
+    auto r = getLocalBounds().reduced (4);
+    auto grille = r.reduced (22, 0).withTrimmedTop (22).withHeight ((int) (r.getHeight() * 0.40f) - 30);
+    model.setBounds (grille.withSizeKeepingCentre (jmin (430, grille.getWidth() - 40), 38).translated (0, -8));
+    auto panel = r.reduced (22, 0).withTrimmedTop ((int) (r.getHeight() * 0.40f)).withTrimmedBottom (20);
+    auto row = panel.reduced (64, 8);
+    const int kw = row.getWidth() / jmax (1, knobs.size());
+    for (auto* k : knobs) k->setBounds (row.removeFromLeft (kw).reduced (2, 0));
+}
+
+// ======================= cabinet =======================
+Cabinet::Cabinet (JesiennaProcessor& p) : proc (p), cab (p.apvts, "cab"), mic (p.apvts, "mic"), mix (p.apvts, "cabMix", U ("Miks kolumny"))
+{
+    addAndMakeVisible (cab); addAndMakeVisible (mic); addAndMakeVisible (mix);
+    cab.onChange = [this] { repaint(); };
+    mic.onChange = [this] { repaint(); };
+}
+
+void Cabinet::paint (Graphics& g)
+{
+    const auto& L = ampLook (lookId);
+    const String name = cab.getText();
+    int speakers = 1; float size = 1.0f;
+    if (name.contains (U ("4×12"))) speakers = 4; else if (name.contains (U ("2×12"))) speakers = 2; else if (name.contains (U ("1×8"))) size = 0.7f;
+    const bool none = cab.getSelectedItemIndex() == 0;
+    auto area = box;
+    if (none)
+    {
+        g.setColour (col::dim); g.setFont (FontOptions (15.0f));
+        g.drawFittedText (U ("Bez kolumny – sygnał prosto ze wzmacniacza (DI)"), area.toNearestInt(), Justification::centred, 2);
+        return;
+    }
+    auto body = area.withSizeKeepingCentre (area.getWidth() * (speakers == 4 ? 0.82f : 0.86f) * (size < 1 ? 0.72f : 1.0f), area.getHeight() * (speakers == 4 ? 0.98f : 0.78f) * (size < 1 ? 0.72f : 1.0f));
+    g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (body.translated (4, 6), 10);
+    g.setColour (L.tolex); g.fillRoundedRectangle (body, 10);
+    if (L.tweedCloth)
+    {
+        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (body.toNearestInt());
+        for (float x = body.getX() - body.getHeight(); x < body.getRight(); x += 5) { g.setColour (Colour (0xff8a6a3a).withAlpha (0.45f)); g.drawLine (x, body.getBottom(), x + body.getHeight(), body.getY(), 1.4f); }
+    }
+    auto grille = body.reduced (14);
+    g.setColour (L.grille); g.fillRoundedRectangle (grille, 6);
+    // speakers seen through the cloth
+    std::vector<Point<float>> centres;
+    if (speakers == 4) { for (int i = 0; i < 4; ++i) centres.push_back ({ grille.getX() + grille.getWidth() * (i % 2 ? 0.73f : 0.27f), grille.getY() + grille.getHeight() * (i / 2 ? 0.73f : 0.27f) }); }
+    else if (speakers == 2) { centres = { { grille.getX() + grille.getWidth() * 0.27f, grille.getCentreY() }, { grille.getX() + grille.getWidth() * 0.73f, grille.getCentreY() } }; }
+    else centres = { grille.getCentre() };
+    const float sr = jmin (grille.getWidth() / (speakers == 1 ? 2.4f : 4.4f), grille.getHeight() / (speakers == 4 ? 4.4f : 2.4f));
+    for (auto c : centres)
+    {
+        g.setColour (Colours::black.withAlpha (0.28f)); g.fillEllipse (Rectangle<float> (sr * 2, sr * 2).withCentre (c));
+        g.setColour (Colours::black.withAlpha (0.22f)); g.fillEllipse (Rectangle<float> (sr * 0.7f, sr * 0.7f).withCentre (c));
+    }
+    {
+        Graphics::ScopedSaveState ss (g); g.reduceClipRegion (grille.toNearestInt());
+        for (float x = grille.getX(); x < grille.getRight(); x += 3) { g.setColour (Colours::black.withAlpha (0.08f)); g.drawVerticalLine ((int) x, grille.getY(), grille.getBottom()); }
+        for (float y = grille.getY(); y < grille.getBottom(); y += 3) { g.setColour (Colours::white.withAlpha (0.05f)); g.drawHorizontalLine ((int) y, grille.getX(), grille.getRight()); }
+    }
+    g.setColour (Colours::black.withAlpha (0.6f)); g.drawRoundedRectangle (body, 10, 1.5f);
+
+    // the microphone in front of the first speaker
+    const int m = mic.getSelectedItemIndex();
+    if (m <= 0 || centres.empty()) return;
+    auto c = centres.front();
+    const bool far = m == 4;
+    const float s = far ? 0.6f : 1.0f;
+    Point<float> head = far ? Point<float> (body.getRight() + 26, body.getY() + 30) : c.translated (sr * 0.2f, 0);
+    g.setColour (Colour (0xff1c1c1c));   // stand / boom
+    g.drawLine (head.x + 40 * s, head.y + 10 * s, head.x + 120 * s, head.y + 70 * s, 4.0f * s);
+    if (m == 1)        // dynamic: slim cylinder with a grille tip, angled at the cone
+    {
+        Path p; p.addRoundedRectangle (0, -7 * s, 70 * s, 14 * s, 6 * s);
+        g.setColour (Colour (0xff2a2a2a)); g.fillPath (p, AffineTransform::rotation (0.55f).translated (head));
+        Path tip; tip.addRoundedRectangle (-14 * s, -9 * s, 18 * s, 18 * s, 7 * s);
+        g.setColour (Colour (0xffb8b8b8)); g.fillPath (tip, AffineTransform::rotation (0.55f).translated (head));
+    }
+    else if (m == 2)   // ribbon: rounded grille box
+    {
+        auto rr = Rectangle<float> (34 * s, 54 * s).withCentre (head);
+        g.setColour (Colour (0xff3a3632)); g.fillRoundedRectangle (rr, 12 * s);
+        for (float y = rr.getY() + 6 * s; y < rr.getBottom() - 6 * s; y += 4 * s) { g.setColour (Colour (0xffb9b1a4).withAlpha (0.6f)); g.drawHorizontalLine ((int) y, rr.getX() + 5 * s, rr.getRight() - 5 * s); }
+        g.setColour (Colour (0xffd0c8b8)); g.drawRoundedRectangle (rr, 12 * s, 1.5f);
+    }
+    else               // condenser (large diaphragm) or the distant room mic
+    {
+        auto rr = Rectangle<float> (30 * s, 70 * s).withCentre (head);
+        g.setColour (Colour (0xffc6c2b8)); g.fillRoundedRectangle (rr, 14 * s);
+        auto cap = rr.withHeight (rr.getHeight() * 0.48f);
+        g.setColour (Colour (0xff8e8a82)); g.fillRoundedRectangle (cap.reduced (3 * s), 12 * s);
+        for (float y = cap.getY() + 6 * s; y < cap.getBottom() - 4 * s; y += 3.5f * s) { g.setColour (Colours::black.withAlpha (0.18f)); g.drawHorizontalLine ((int) y, cap.getX() + 5 * s, cap.getRight() - 5 * s); }
+    }
+}
+
+void Cabinet::resized()
+{
+    auto r = getLocalBounds();
+    auto controls = r.removeFromBottom (92);
+    box = r.toFloat().reduced (10, 6);
+    auto left = controls.removeFromLeft (controls.getWidth() - 96);
+    cab.setBounds (left.removeFromTop (40).reduced (4, 6));
+    mic.setBounds (left.removeFromTop (40).reduced (4, 6));
+    mix.setBounds (controls.reduced (6, 0));
+}
+
+// ======================= guitar page =======================
+static Colour pedalColour (const String& look)
+{
+    if (look == "green") return Colour (0xff2f7d4f);
+    if (look == "yellow") return Colour (0xffd9b52f);
+    if (look == "orange") return Colour (0xffe0782a);
+    if (look == "blue") return Colour (0xff2d5f9e);
+    if (look == "black") return Colour (0xff2a2a2d);
+    return Colour (0xffa4532a);   // our own: autumn rust
+}
+
+RigPage::RigPage (JesiennaProcessor& p)
+    : proc (p),
+      input (p.apvts, U ("Wejście"), Colour (0xff60666c), {}, {}, { { "inGain", U ("Gain") }, { "gate", U ("Bramka") }, { "comp", U ("Kompresja") } }),
+      drive (p.apvts, U ("Przester"), pedalColour ({}), "odOn", "pedal", { { "odDrive", U ("Drive") }, { "odTone", U ("Ton") }, { "odLevel", U ("Poziom") } }),
+      mod (p.apvts, U ("Modulacja"), Colour (0xff5b3f8c), "modOn", "modType", { { "modRate", U ("Szybkość") }, { "modDepth", U ("Głębia") } }),
+      delay (p.apvts, U ("Delay"), Colour (0xff1f6f73), "dlyOn", "dlyDiv", { { "dlyMix", U ("Miks") }, { "dlyFb", U ("Powtórz.") }, { "dlyTone", U ("Barwa") } }),
+      amp (p), cab (p),
+      level (p.apvts, "gtrLevel", U ("Głośność")), pan (p.apvts, "gtrPan", U ("Panorama")), space (p.apvts, "gtrSpace", U ("Przestrzeń")),
+      inCh (p.apvts, "inCh")
+{
+    for (auto* c : std::initializer_list<Component*> { &input, &drive, &mod, &delay, &amp, &cab, &level, &pan, &space, &inCh }) addAndMakeVisible (c);
+    auto updDrive = [this]
+    {
+        const int i = drive.type->getSelectedItemIndex();
+        const String look = i > 0 && i - 1 < proc.namPedals.size() ? proc.namPedals[i - 1].look : String();
+        drive.setColour (pedalColour (look));
+    };
+    drive.type->onChange = updDrive; updDrive();
+    auto prevAmp = amp.model.onChange;
+    amp.model.onChange = [this, prevAmp] { prevAmp(); cab.lookId = amp.lookId; cab.repaint(); };
+    cab.lookId = amp.lookId;
+}
+
+void RigPage::paint (Graphics& g)
+{
+    // pedalboard
+    auto board = Rectangle<float> (12, 8, (float) getWidth() - 24, 268);
+    g.setGradientFill (ColourGradient (Colour (0xff2a2420), board.getX(), board.getY(), Colour (0xff161210), board.getX(), board.getBottom(), false));
+    g.fillRoundedRectangle (board, 12);
+    for (float y = board.getY() + 30; y < board.getBottom(); y += 54) { g.setColour (Colours::black.withAlpha (0.35f)); g.fillRect (board.getX() + 10, y, board.getWidth() - 20, 6.0f); }
+    g.setColour (col::line); g.drawRoundedRectangle (board, 12, 1.0f);
+    g.setColour (col::dim); g.setFont (FontOptions (11.0f, Font::bold));
+    g.drawText (U ("GITARA"), Rectangle<int> (18, 11, 60, 14), Justification::left);
+
+    // patch cables: guitar → pedals → amp → cabinet
+    auto cable = [&] (Point<float> a, Point<float> b, float sag)
+    {
+        Path p; p.startNewSubPath (a); p.cubicTo (a.translated (30, sag), b.translated (-30, sag), b);
+        g.setColour (Colours::black.withAlpha (0.4f)); g.strokePath (p, PathStrokeType (7.0f), AffineTransform::translation (0, 3));
+        g.setColour (Colour (0xff1b1b1b)); g.strokePath (p, PathStrokeType (6.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour (Colours::white.withAlpha (0.08f)); g.strokePath (p, PathStrokeType (1.5f), AffineTransform::translation (-1, -1.5f));
+    };
+    auto jy = [] (Component& c) { return (float) c.getY() + 4 + 46; };
+    cable ({ 24, 60 }, { (float) input.getX() + 4, jy (input) }, 30);
+    cable ({ (float) input.getRight() - 4, jy (input) }, { (float) drive.getX() + 4, jy (drive) }, 26);
+    cable ({ (float) drive.getRight() - 4, jy (drive) }, { (float) mod.getX() + 4, jy (mod) }, 26);
+    cable ({ (float) mod.getRight() - 4, jy (mod) }, { (float) delay.getX() + 4, jy (delay) }, 26);
+    // from the delay down to the amp's input (the order here is drawn like a real rig; the sound runs modulation and delay after the amp)
+    const float ampIn = (float) amp.getX() + 4 + 22 + 30, ampInY = (float) amp.getY() + 4 + (amp.getHeight() - 8) * 0.40f + ((amp.getHeight() - 8) * 0.60f - 20) / 2 - 4;
+    {
+        Path p; Point<float> a ((float) delay.getRight() - 4, jy (delay)), b (ampIn, ampInY);
+        p.startNewSubPath (a); p.cubicTo (a.translated (60, 30), { a.x + 40, board.getBottom() + 40 }, { (a.x + b.x) / 2 + 200, board.getBottom() + 24 });
+        p.cubicTo ({ b.x - 60, board.getBottom() + 10 }, b.translated (-60, -40), b);
+        g.setColour (Colours::black.withAlpha (0.4f)); g.strokePath (p, PathStrokeType (7.0f), AffineTransform::translation (0, 3));
+        g.setColour (Colour (0xff1b1b1b)); g.strokePath (p, PathStrokeType (6.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+    // speaker cable
+    cable ({ (float) amp.getRight() - 30, (float) amp.getBottom() - 30 }, { (float) cab.getX() + 20, (float) cab.getY() + cab.getHeight() * 0.35f }, 40);
+
+    // output strip
+    auto strip = Rectangle<float> ((float) level.getX() - 8, (float) inCh.getY() - 30, (float) level.getWidth() + 16, (float) space.getBottom() - inCh.getY() + 40);
+    g.setColour (col::panel); g.fillRoundedRectangle (strip, 10);
+    g.setColour (col::line); g.drawRoundedRectangle (strip, 10, 1.0f);
+    g.setColour (col::amber); g.setFont (FontOptions (12.0f, Font::bold));
+    g.drawText (U ("WEJŚCIE / MIKS"), strip.withHeight (26).toNearestInt(), Justification::centred);
+}
+
+void RigPage::resized()
+{
+    const int top = 22, ph = 240;
+    int x = 46;
+    input.setBounds (x, top, 190, ph); x += 190 + 34;
+    drive.setBounds (x, top, 240, ph); x += 240 + 34;
+    mod.setBounds (x, top, 210, ph); x += 210 + 34;
+    delay.setBounds (x, top, 240, ph);
+    const int rowY = 300, rowH = getHeight() - rowY - 10;
+    amp.setBounds (20, rowY + 10, 640, rowH - 10);
+    cab.setBounds (676, rowY, 330, rowH);
+    auto strip = Rectangle<int> (1030, rowY + 30, 150, rowH - 40);
+    inCh.setBounds (strip.removeFromTop (30).reduced (2, 0)); strip.removeFromTop (8);
+    const int kh = strip.getHeight() / 3;
+    level.setBounds (strip.removeFromTop (kh).reduced (24, 2));
+    pan.setBounds (strip.removeFromTop (kh).reduced (24, 2));
+    space.setBounds (strip.removeFromTop (kh).reduced (24, 2));
+}
+
+// ======================= band page =======================
+BandPage::BandPage (JesiennaProcessor& p)
+    : proc (p), on (p.apvts, "bandOn", U ("Zespół gra")), sync (p.apvts, "sync", U ("Synchronizacja z DAW")),
+      song (p.apvts, "song"), key (p.apvts, "key"), style (p.apvts, "style"), keysInst (p.apvts, "keysInst"),
+      tempo (p.apvts, "tempo", U ("Tempo")), energy (p.apvts, "energy", U ("Energia")), swing (p.apvts, "swing", U ("Swing")),
+      drums (p.apvts, "drums", U ("Perkusja")), bass (p.apvts, "bassVol", U ("Kontrabas")), keys (p.apvts, "keysVol", U ("Klawisze")),
+      level (p.apvts, "bandLevel", U ("Zespół")), space (p.apvts, "bandSpace", U ("Przestrzeń"))
+{
+    for (auto* c : std::initializer_list<Component*> { &on, &sync, &song, &key, &style, &keysInst, &tempo, &energy, &swing, &drums, &bass, &keys, &level, &space }) addAndMakeVisible (c);
+    timerCallback();   // chord chart filled straight away
+    startTimerHz (15);
+}
+
+void BandPage::timerCallback()
+{
+    const int s = song.getSelectedItemIndex(), k = key.getSelectedItemIndex();
+    bool dirty = false;
+    if (s != progSong || k != progKey) { progSong = s; progKey = k; prog = jw::Band::progressionFor (jmax (0, s), jmax (0, k)); dirty = true; }
+    const int c = proc.apvts.getRawParameterValue ("bandOn")->load() > 0.5f ? proc.band.uiIndex.load() : -1;
+    if (c != current) { current = c; dirty = true; }
+    if (dirty) repaint (chart);
+}
+
+/** toUpperCase() leaves Polish letters alone in the C locale. */
+static String upperPl (const String& t)
+{
+    return t.toUpperCase().replace (U ("ą"), U ("Ą")).replace (U ("ć"), U ("Ć")).replace (U ("ę"), U ("Ę")).replace (U ("ł"), U ("Ł")).replace (U ("ń"), U ("Ń"))
+                          .replace (U ("ó"), U ("Ó")).replace (U ("ś"), U ("Ś")).replace (U ("ź"), U ("Ź")).replace (U ("ż"), U ("Ż"));
+}
+
+static String chordLabel (const jw::Chord& c)
+{
+    static const char* nm[] = { "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "H" };
+    String q = jw::chordTypes()[(size_t) c.type].key;
+    q = q.replace ("maj7s11", U ("maj7♯11")).replace ("m7b5", U ("ø")).replace ("dim7", U ("°7")).replace ("b9", U ("♭9")).replace ("#9", U ("♯9")).replace ("#11", U ("♯11"));
+    return String (nm[c.root % 12]) + q;
+}
+
+void BandPage::paint (Graphics& g)
+{
+    auto card = [&] (Rectangle<int> r, const String& t)
+    {
+        g.setColour (col::panel); g.fillRoundedRectangle (r.toFloat(), 10);
+        g.setColour (col::line); g.drawRoundedRectangle (r.toFloat(), 10, 1.0f);
+        g.setColour (col::amber); g.setFont (FontOptions (12.0f, Font::bold));
+        g.drawText (upperPl (t), r.reduced (14, 8).removeFromTop (16), Justification::left);
+    };
+    card ({ 12, 8, 330, 330 }, U ("Utwór"));
+    card (chart.expanded (10, 34).withTrimmedBottom (24), U ("Akordy (bieżący podświetlony)"));
+    card ({ 12, 350, getWidth() - 24, getHeight() - 360 }, U ("Scena"));
+
+    // chord chart: one chip per chord, width ~ duration
+    if (! prog.empty())
+    {
+        auto area = chart.toFloat();
+        float x = area.getX(), y = area.getY(); const float rowH = 46, unit = 92;
+        for (int i = 0; i < (int) prog.size(); ++i)
+        {
+            const float w = jmax (46.0f, unit * prog[(size_t) i].bars) - 6;
+            if (x + w > area.getRight()) { x = area.getX(); y += rowH; }
+            if (y + rowH > area.getBottom() + 4) break;
+            auto chip = Rectangle<float> (x, y, w, rowH - 8);
+            const bool cur = i == current;
+            g.setColour (cur ? col::amber : col::panel2); g.fillRoundedRectangle (chip, 6);
+            g.setColour (cur ? col::amber.brighter (0.3f) : col::line); g.drawRoundedRectangle (chip, 6, 1.0f);
+            g.setColour (cur ? Colour (0xff1a1410) : col::text); g.setFont (FontOptions (w < 60 ? 14.0f : 17.0f, Font::bold));
+            g.drawFittedText (chordLabel (prog[(size_t) i]), chip.toNearestInt().reduced (4, 0), Justification::centred, 1);
+            x += w + 6;
+        }
+    }
+    // stage illustrations above the instrument knobs
+    auto drawKit = [&] (Rectangle<float> r)
+    {
+        g.setColour (Colour (0xff3a3a3e)); g.fillEllipse (r.getCentreX() - 34, r.getBottom() - 62, 68, 60);        // kick
+        g.setColour (Colour (0xffd9d4c8)); g.fillEllipse (r.getCentreX() - 26, r.getBottom() - 54, 52, 44);
+        g.setColour (Colour (0xff9a2a2a)); g.fillEllipse (r.getCentreX() - 10, r.getBottom() - 40, 20, 18);
+        g.setColour (Colour (0xffc9a24a));
+        g.fillEllipse (r.getX() + 4, r.getY() + 14, 56, 10); g.drawLine (r.getX() + 32, r.getY() + 24, r.getX() + 32, r.getBottom() - 4, 2.0f);   // hi-hat
+        g.fillEllipse (r.getRight() - 72, r.getY() + 2, 70, 12); g.drawLine (r.getRight() - 37, r.getY() + 14, r.getRight() - 37, r.getBottom() - 4, 2.0f); // ride
+        g.setColour (Colour (0xffe8e2d6)); g.fillEllipse (r.getX() + 40, r.getBottom() - 58, 40, 14);               // snare
+    };
+    auto drawBass = [&] (Rectangle<float> r)
+    {
+        Path body; const float cx = r.getCentreX(), top = r.getY() + 6, bot = r.getBottom() - 4;
+        body.startNewSubPath (cx, top + 46);
+        body.cubicTo (cx + 30, top + 46, cx + 26, top + 74, cx + 20, top + 80);
+        body.cubicTo (cx + 38, top + 92, cx + 36, bot - 8, cx, bot);
+        body.cubicTo (cx - 36, bot - 8, cx - 38, top + 92, cx - 20, top + 80);
+        body.cubicTo (cx - 26, top + 74, cx - 30, top + 46, cx, top + 46);
+        g.setGradientFill (ColourGradient (Colour (0xffb5652b), cx - 30, top, Colour (0xff5a2a12), cx + 30, bot, false)); g.fillPath (body);
+        g.setColour (Colour (0xff1a1a1a)); g.fillRect (cx - 2.5f, top, 5.0f, bot - top - 18);
+        g.fillRoundedRectangle (cx - 6, top - 4, 12, 16, 4);
+        g.setColour (Colour (0xff1a0c06)); g.fillRoundedRectangle (cx - 13, top + 96, 3, 16, 1.5f); g.fillRoundedRectangle (cx + 10, top + 96, 3, 16, 1.5f);
+    };
+    auto drawKeys = [&] (Rectangle<float> r)
+    {
+        auto k = Rectangle<float> (r.getX() + 6, r.getBottom() - 58, r.getWidth() - 12, 44);
+        g.setColour (Colour (0xff2b2b2e)); g.fillRoundedRectangle (k, 5);
+        auto keysArea = k.reduced (8, 10).withTrimmedTop (8);
+        const int nKeys = 21; const float kw = keysArea.getWidth() / nKeys;
+        for (int i = 0; i < nKeys; ++i) { g.setColour (Colour (0xfff2eee6)); g.fillRect (keysArea.getX() + i * kw + 0.5f, keysArea.getY(), kw - 1, keysArea.getHeight()); }
+        for (int i = 0; i < nKeys - 1; ++i) { const int m = i % 7; if (m == 2 || m == 6) continue; g.setColour (Colour (0xff111111)); g.fillRect (keysArea.getX() + (i + 1) * kw - kw * 0.3f, keysArea.getY(), kw * 0.6f, keysArea.getHeight() * 0.6f); }
+        g.setColour (Colour (0xff1c1c1c)); g.drawLine (k.getX() + 14, k.getBottom(), k.getX() + 8, r.getBottom() + 6, 3.0f); g.drawLine (k.getRight() - 14, k.getBottom(), k.getRight() - 8, r.getBottom() + 6, 3.0f);
+    };
+    const float sy = (float) stage.getY();
+    drawKit ({ (float) drums.getX() - 40, sy, (float) drums.getWidth() + 80, 120 });
+    drawBass ({ (float) bass.getX() - 20, sy - 6, (float) bass.getWidth() + 40, 130 });
+    drawKeys ({ (float) keys.getX() - 60, sy, (float) keys.getWidth() + 120, 120 });
+}
+
+void BandPage::resized()
+{
+    auto left = Rectangle<int> (12, 8, 330, 330).reduced (16, 34);
+    on.setBounds (left.removeFromTop (34)); left.removeFromTop (6);
+    sync.setBounds (left.removeFromTop (34)); left.removeFromTop (10);
+    song.setBounds (left.removeFromTop (30)); left.removeFromTop (8);
+    auto row = left.removeFromTop (30); key.setBounds (row.removeFromLeft (row.getWidth() / 2 - 4)); row.removeFromLeft (8); style.setBounds (row);
+    left.removeFromTop (6);
+    tempo.setBounds (left.withSizeKeepingCentre (110, left.getHeight()));
+    chart = Rectangle<int> (366, 42, getWidth() - 366 - 22, 270);
+    // stage
+    auto st = Rectangle<int> (12, 350, getWidth() - 24, getHeight() - 360).reduced (20, 34);
+    stage = st.withHeight (130);
+    auto knobs = st.withTrimmedTop (140);
+    const int cw = knobs.getWidth() / 7;
+    auto place = [&] (Knob& k) { k.setBounds (knobs.removeFromLeft (cw).withSizeKeepingCentre (96, jmin (knobs.getHeight(), 112))); };
+    place (drums); place (bass);
+    auto kcol = knobs.removeFromLeft (cw);
+    keys.setBounds (kcol.withSizeKeepingCentre (96, jmin (kcol.getHeight(), 112)).translated (0, -8));
+    keysInst.setBounds (kcol.withSizeKeepingCentre (130, 26).withY (keys.getBottom() + 2));
+    place (energy); place (swing); place (level); place (space);
+    // instruments over the first three columns; centre the stage drawing on them
+    stage = stage.withLeft (st.getX());
+}
+
+// ======================= space page =======================
+SpacePage::SpacePage (JesiennaProcessor& p)
+    : proc (p), room (p.apvts, "room", "lcd"), colour (p.apvts, "colour", "lcd"),
+      spaceMix (p.apvts, "spaceMix", U ("Poziom")), gtrSpace (p.apvts, "gtrSpace", U ("Gitara")), bandSpace (p.apvts, "bandSpace", U ("Zespół")),
+      colourMix (p.apvts, "colourMix", U ("Miks")), tape (p.apvts, "tape", U ("Taśma")), out (p.apvts, "out", U ("Wyjście")),
+      limit (p.apvts, "limit", U ("Limiter"))
+{
+    for (auto* c : std::initializer_list<Component*> { &room, &colour, &spaceMix, &gtrSpace, &bandSpace, &colourMix, &tape, &out, &limit }) addAndMakeVisible (c);
+}
+
+void SpacePage::paint (Graphics& g)
+{
+    auto rack = [&] (Rectangle<int> r, const String& t, const String& sub)
+    {
+        auto f = r.toFloat();
+        g.setColour (Colours::black.withAlpha (0.5f)); g.fillRoundedRectangle (f.translated (3, 5), 6);
+        g.setGradientFill (ColourGradient (Colour (0xff34302c), f.getX(), f.getY(), Colour (0xff1c1916), f.getX(), f.getBottom(), false));
+        g.fillRoundedRectangle (f, 6);
+        for (float y = f.getY() + 3; y < f.getBottom() - 3; y += 2) { g.setColour (Colours::white.withAlpha (0.02f)); g.drawHorizontalLine ((int) y, f.getX() + 40, f.getRight() - 40); }
+        // rack ears with holes
+        for (auto ex : { f.getX(), f.getRight() - 30 })
+        {
+            g.setColour (Colour (0xff4a4540)); g.fillRect (ex, f.getY(), 30.0f, f.getHeight());
+            for (auto hy : { f.getY() + 18, f.getBottom() - 18 }) { g.setColour (Colour (0xff0e0c0a)); g.fillRoundedRectangle (ex + 8, hy - 5, 14, 10, 5); }
+        }
+        g.setColour (col::amber); g.setFont (FontOptions (serifName(), 18.0f, Font::bold | Font::italic));
+        g.drawText (t, r.reduced (46, 10).removeFromTop (24), Justification::left);
+        g.setColour (col::dim); g.setFont (FontOptions (12.0f));
+        g.drawText (sub, r.reduced (46, 10).withTrimmedTop (24).removeFromTop (16), Justification::left);
+    };
+    rack (r1, U ("Przestrzeń"), U ("kluby, tunele, ulice, kościoły, płyta i sprężyny – prawdziwe odpowiedzi impulsowe"));
+    rack (r2, U ("Barwa i taśma"), U ("mikrofon kasetowy, deck, taśma szpulowa, gramofon, telefon + wow, nasycenie i szum"));
+    rack (r3, U ("Wyjście"), U ("głośność całości i limiter, żeby nic nie przesterowało"));
+    // tape reels on the second unit
+    auto reelArea = r2.withTrimmedLeft (r2.getWidth() - 330).withTrimmedRight (60).reduced (10, 34).toFloat();
+    const float reelD = jmin (reelArea.getHeight(), reelArea.getWidth() * 0.46f);
+    for (int i = 0; i < 2; ++i)
+    {
+        auto c = Rectangle<float> (reelD, reelD).withCentre ({ reelArea.getX() + reelArea.getWidth() * (i ? 0.75f : 0.25f), reelArea.getCentreY() });
+        g.setColour (Colour (0xff2a2622)); g.fillEllipse (c);
+        g.setColour (Colour (0xff6a5a46)); g.fillEllipse (c.reduced (c.getWidth() * (i ? 0.3f : 0.12f)));
+        g.setColour (Colour (0xffcfc8bc)); g.fillEllipse (c.reduced (c.getWidth() * 0.36f));
+        for (int s = 0; s < 3; ++s) { const float a = s * MathConstants<float>::twoPi / 3; g.setColour (Colour (0xff2a2622)); g.fillEllipse (Rectangle<float> (7, 7).withCentre (c.getCentre() + Point<float> (std::sin (a), std::cos (a)) * c.getWidth() * 0.08f)); }
+    }
+    // big output meters on the third unit
+    auto mArea = r3.withTrimmedLeft (r3.getWidth() - 360).reduced (50, 26).toFloat();
+    const float levels[] = { proc.outLevelL.load(), proc.outLevelR.load() };
+    for (int i = 0; i < 2; ++i)
+    {
+        auto bar = mArea.removeFromTop (mArea.getHeight() / (2 - i)).reduced (0, 4);
+        g.setColour (Colour (0xff0d0b09)); g.fillRoundedRectangle (bar, 3);
+        const float db = jlimit (-48.0f, 0.0f, Decibels::gainToDecibels (levels[i] + 1e-6f));
+        auto fill = bar.reduced (2).withWidth ((bar.getWidth() - 4) * (db + 48) / 48);
+        g.setGradientFill (ColourGradient (Colour (0xff3fae5a), fill.getX(), 0, Colour (0xffe0a24a), bar.getX() + bar.getWidth() * 0.8f, 0, false));
+        g.fillRoundedRectangle (fill, 2);
+        g.setColour (col::dim); g.setFont (FontOptions (11.0f)); g.drawText (i ? "R" : "L", bar.withX (bar.getX() - 16).withWidth (14).toNearestInt(), Justification::centred);
+    }
+}
+
+void SpacePage::resized()
+{
+    const int w = getWidth() - 40;
+    r1 = { 20, 14, w, 220 }; r2 = { 20, 250, w, 220 }; r3 = { 20, 486, w, getHeight() - 500 };
+    auto lay = [] (Rectangle<int> r, Choice& c, std::initializer_list<Knob*> ks)
+    {
+        auto inner = r.reduced (46, 10).withTrimmedTop (48);
+        c.setBounds (inner.removeFromLeft (380).withSizeKeepingCentre (380, 40));
+        inner.removeFromLeft (30);
+        for (auto* k : ks) k->setBounds (inner.removeFromLeft (110).withSizeKeepingCentre (100, jmin (inner.getHeight(), 120)));
+    };
+    lay (r1, room, { &spaceMix, &gtrSpace, &bandSpace });
+    lay (r2, colour, { &colourMix, &tape });
+    auto inner = r3.reduced (46, 10).withTrimmedTop (44);
+    limit.setBounds (inner.removeFromLeft (180).withSizeKeepingCentre (160, 36));
+    inner.removeFromLeft (30);
+    out.setBounds (inner.removeFromLeft (110).withSizeKeepingCentre (100, jmin (inner.getHeight(), 120)));
+}
+
+} // namespace ui
+
+// ======================= editor =======================
 using namespace juce;
 
-// ---------------- look ----------------
-JwLook::JwLook()
+void JesiennaEditor::Header::paint (Graphics& g)
 {
-    setColour (ResizableWindow::backgroundColourId, bg());
-    setColour (Slider::rotarySliderFillColourId, amber());
-    setColour (Slider::textBoxTextColourId, Colour (0xffd8ccc0));
-    setColour (Slider::textBoxOutlineColourId, Colours::transparentBlack);
-    setColour (Label::textColourId, Colour (0xffbfb2a4));
-    setColour (ComboBox::backgroundColourId, Colour (0xff2b221d));
-    setColour (ComboBox::outlineColourId, Colour (0xff4a3a30));
-    setColour (ComboBox::textColourId, Colour (0xffeee2d4));
-    setColour (ComboBox::arrowColourId, amber());
-    setColour (PopupMenu::backgroundColourId, Colour (0xff221b17));
-    setColour (PopupMenu::highlightedBackgroundColourId, amber().withAlpha (0.35f));
-    setColour (PopupMenu::textColourId, Colour (0xffeee2d4));
-    setColour (TabbedButtonBar::tabTextColourId, Colour (0xffbfb2a4));
-    setColour (TabbedButtonBar::frontTextColourId, amber());
-    setColour (TabbedComponent::backgroundColourId, bg());
-    setColour (TabbedComponent::outlineColourId, Colours::transparentBlack);
-}
-
-void JwLook::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos, float a0, float a1, Slider&)
-{
-    auto r = Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (4);
-    const float d = jmin (r.getWidth(), r.getHeight()); auto c = r.withSizeKeepingCentre (d, d);
-    const float ang = a0 + pos * (a1 - a0);
-    g.setColour (Colour (0xff2e2520)); g.fillEllipse (c.reduced (d * 0.12f));
-    g.setColour (Colour (0xff4a3a30)); g.drawEllipse (c.reduced (d * 0.12f), 1.2f);
-    Path bgArc; bgArc.addCentredArc (c.getCentreX(), c.getCentreY(), d * 0.46f, d * 0.46f, 0, a0, a1, true);
-    g.setColour (Colour (0xff3a2f28)); g.strokePath (bgArc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
-    Path arc; arc.addCentredArc (c.getCentreX(), c.getCentreY(), d * 0.46f, d * 0.46f, 0, a0, ang, true);
-    g.setColour (amber()); g.strokePath (arc, PathStrokeType (3.0f, PathStrokeType::curved, PathStrokeType::rounded));
-    Path ptr; ptr.addRoundedRectangle (-1.5f, -d * 0.36f, 3.0f, d * 0.18f, 1.5f);
-    g.setColour (Colour (0xfff2e6d8)); g.fillPath (ptr, AffineTransform::rotation (ang).translated (c.getCentreX(), c.getCentreY()));
-}
-
-void JwLook::drawToggleButton (Graphics& g, ToggleButton& b, bool hl, bool)
-{
-    auto r = b.getLocalBounds().toFloat().reduced (2);
-    const bool on = b.getToggleState();
-    g.setColour (on ? amber().withAlpha (0.85f) : Colour (0xff2b221d)); g.fillRoundedRectangle (r, 6);
-    g.setColour (hl ? amber() : Colour (0xff4a3a30)); g.drawRoundedRectangle (r, 6, 1.2f);
-    g.setColour (on ? Colour (0xff1a1410) : Colour (0xffd8ccc0)); g.setFont (FontOptions (13.0f, Font::bold));
-    g.drawFittedText (b.getButtonText(), r.toNearestInt().reduced (4, 0), Justification::centred, 2);
-}
-
-// ---------------- page ----------------
-ParamPage::ParamPage (JesiennaProcessor& p, std::vector<Group> gs) : groups (std::move (gs))
-{
-    for (auto& gr : groups)
+    auto& e = *ed;
+    auto r = getLocalBounds();
+    g.setGradientFill (ColourGradient (Colour (0xff201914), 0, 0, ui::col::bg, 0, (float) r.getHeight(), false));
+    g.fillRect (r);
+    // skyline silhouette behind the title
     {
-        std::vector<std::unique_ptr<Ctl>> row;
-        for (auto& id : gr.ids)
-        {
-            auto* prm = p.apvts.getParameter (id); if (prm == nullptr) continue;
-            auto c = std::make_unique<Ctl>(); c->id = id;
-            if (auto* ch = dynamic_cast<AudioParameterChoice*> (prm))
-            {
-                auto cb = std::make_unique<ComboBox>(); cb->addItemList (ch->choices, 1);
-                c->ca = std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment> (p.apvts, id, *cb);
-                c->comp = std::move (cb); c->kind = 1;
-            }
-            else if (dynamic_cast<AudioParameterBool*> (prm) != nullptr)
-            {
-                auto tb = std::make_unique<ToggleButton> (prm->getName (40));
-                c->ba = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, id, *tb);
-                c->comp = std::move (tb); c->kind = 2;
-            }
-            else
-            {
-                auto s = std::make_unique<Slider> (Slider::RotaryHorizontalVerticalDrag, Slider::TextBoxBelow);
-                s->setTextBoxStyle (Slider::TextBoxBelow, false, 70, 16);
-                c->sa = std::make_unique<AudioProcessorValueTreeState::SliderAttachment> (p.apvts, id, *s);
-                s->setNumDecimalPlacesToDisplay (prm->getLabel().isNotEmpty() ? 0 : 2);
-                s->setTextValueSuffix (prm->getLabel().isNotEmpty() ? " " + prm->getLabel() : "");
-                s->setDoubleClickReturnValue (true, dynamic_cast<RangedAudioParameter*> (prm)->convertFrom0to1 (prm->getDefaultValue()));
-                c->comp = std::move (s);
-            }
-            if (c->kind != 2)
-            {
-                // short label: drop "Group – " prefix
-                auto nm = prm->getName (60); if (nm.contains (" – ")) nm = nm.fromFirstOccurrenceOf (" – ", false, false);
-                c->label.setText (nm, dontSendNotification); c->label.setJustificationType (Justification::centred);
-                c->label.setFont (FontOptions (12.5f)); addAndMakeVisible (c->label);
-            }
-            addAndMakeVisible (*c->comp);
-            row.push_back (std::move (c));
-        }
-        ctls.push_back (std::move (row));
+        Path sky; const float base = (float) r.getHeight() - 2; float x = 0;
+        Random rnd (11);
+        sky.startNewSubPath (0, base);
+        while (x < 560) { const float w = 14 + rnd.nextFloat() * 26, h = 10 + rnd.nextFloat() * 26; sky.lineTo (x, base - h); sky.lineTo (x + w, base - h); x += w; }
+        sky.lineTo (300, base - 30); sky.lineTo (306, base - 62); sky.lineTo (312, base - 30);   // a spire
+        sky.lineTo (560, base); sky.closeSubPath();
+        g.setColour (Colour (0xff2a211b)); g.fillPath (sky);
     }
-}
+    g.setColour (ui::col::amber); g.setFont (FontOptions (ui::serifName(), 30.0f, Font::bold | Font::italic));
+    g.drawText ("Jesienna Warszawa", 18, 10, 360, 36, Justification::left);
+    g.setColour (ui::col::dim); g.setFont (FontOptions (12.0f));
+    g.drawText (jw::U ("gitara · wzmacniacze · zespół · przestrzeń"), 20, 46, 340, 16, Justification::left);
 
-void ParamPage::paint (Graphics& g)
-{
-    for (size_t i = 0; i < boxes.size(); ++i)
+    // tuner
+    auto tr = Rectangle<int> (W - 500, 10, 230, 62);
+    g.setColour (ui::col::panel); g.fillRoundedRectangle (tr.toFloat(), 8);
+    g.setColour (ui::col::text); g.setFont (FontOptions (24.0f, Font::bold));
+    g.drawText (e.tunerNote.isEmpty() ? jw::U ("–") : e.tunerNote, tr.removeFromLeft (70), Justification::centred);
+    auto scale = tr.reduced (8, 20);
+    g.setColour (ui::col::line); g.fillRect (scale.withHeight (2).withY (scale.getCentreY()));
+    g.fillRect (scale.getCentreX() - 1, scale.getY(), 2, scale.getHeight());
+    if (e.tunerNote.isNotEmpty())
     {
-        g.setColour (JwLook::panel()); g.fillRoundedRectangle (boxes[i].toFloat(), 8);
-        g.setColour (JwLook::amber()); g.setFont (FontOptions (13.0f, Font::bold));
-        g.drawText (groups[i].title.toUpperCase(), boxes[i].reduced (10, 4).removeFromTop (18), Justification::left);
+        const float x = (float) scale.getCentreX() + e.tunerCents / 50.0f * scale.getWidth() / 2.0f;
+        g.setColour (std::abs (e.tunerCents) < 4 ? ui::col::green : ui::col::amber);
+        g.fillRoundedRectangle (x - 3, (float) scale.getY() - 2, 6, (float) scale.getHeight() + 4, 3);
+        g.setFont (FontOptions (11.0f)); g.setColour (ui::col::dim);
+        g.drawText (String (e.tunerHz, 1) + " Hz", scale.translated (0, 17), Justification::centred);
     }
-}
+    else { g.setColour (ui::col::dim); g.setFont (FontOptions (11.0f)); g.drawText (jw::U ("stroik – zagraj strunę"), scale.translated (0, 17), Justification::centred); }
 
-void ParamPage::resized()
-{
-    // groups flow left→right, wrapping to new rows; every group sized by its controls
-    boxes.clear();
-    auto area = getLocalBounds().reduced (8);
-    const int knobW = 84, rowH = 112, comboW = 220;
-    int x = area.getX(), y = area.getY(), lineH = 0;
-    for (size_t gi = 0; gi < groups.size(); ++gi)
+    // chord display
+    auto br = Rectangle<int> (W - 260, 10, 150, 62);
+    g.setColour (ui::col::panel); g.fillRoundedRectangle (br.toFloat(), 8);
+    g.setColour (ui::col::text); g.setFont (FontOptions (24.0f, Font::bold));
+    g.drawText (e.chordText.isEmpty() ? jw::U ("–") : e.chordText, br.removeFromTop (38), Justification::centred);
+    g.setColour (ui::col::dim); g.setFont (FontOptions (11.5f)); g.drawText (e.barText, br, Justification::centred);
+
+    // meters
+    auto mr = Rectangle<int> (W - 96, 12, 84, 58);
+    auto meter = [&] (Rectangle<int> m, float lvl, const char* lab)
     {
-        int combos = 0, knobs = 0; for (auto& c : ctls[gi]) (c->kind == 0 ? knobs : combos)++;
-        const int width = jmin (area.getWidth(), 16 + (combos ? comboW + 8 : 0) + knobs * knobW);
-        const int knobRows = combos ? jmax (1, (combos * 46 + 10) / rowH + ((combos * 46 + 10) % rowH ? 1 : 0)) : 1;
-        const int perRow = jmax (1, (width - 16 - (combos ? comboW + 8 : 0)) / knobW);
-        const int h = 28 + jmax (knobRows, (knobs + perRow - 1) / perRow) * rowH;
-        if (x + width > area.getRight() && x > area.getX()) { x = area.getX(); y += lineH + 8; lineH = 0; }
-        Rectangle<int> box (x, y, width, h); boxes.push_back (box);
-        auto inner = box.reduced (8); inner.removeFromTop (22);
-        auto comboCol = combos ? inner.removeFromLeft (comboW) : Rectangle<int>();
-        if (combos) inner.removeFromLeft (8);
-        int k = 0;
-        for (auto& c : ctls[gi])
-        {
-            if (c->kind != 0)
-            {
-                auto r = comboCol.removeFromTop (46);
-                if (c->kind == 1) { c->label.setBounds (r.removeFromTop (16)); c->label.setJustificationType (Justification::left); c->comp->setBounds (r.removeFromTop (26)); }
-                else c->comp->setBounds (r.reduced (0, 6));
-            }
-            else
-            {
-                const int col = k % perRow, rw = k / perRow; ++k;
-                Rectangle<int> r (inner.getX() + col * knobW, inner.getY() + rw * rowH, knobW, rowH);
-                c->label.setBounds (r.removeFromTop (16)); c->comp->setBounds (r.reduced (2));
-            }
-        }
-        x += width + 8; lineH = jmax (lineH, h);
-    }
+        auto bar = m.removeFromTop (m.getHeight() - 14).toFloat();
+        g.setColour (Colour (0xff0d0b09)); g.fillRoundedRectangle (bar, 2);
+        const float db = jlimit (-60.0f, 0.0f, Decibels::gainToDecibels (lvl + 1e-6f));
+        auto fill = bar.reduced (2).withTrimmedTop ((bar.getHeight() - 4) * (-db / 60.0f));
+        g.setColour (db > -3 ? Colours::indianred : (db > -12 ? ui::col::amber : Colour (0xff3fae5a))); g.fillRoundedRectangle (fill, 1);
+        g.setColour (ui::col::dim); g.setFont (FontOptions (10.0f)); g.drawText (lab, m, Justification::centred);
+    };
+    meter (mr.removeFromLeft (26), e.inLevel, "IN"); mr.removeFromLeft (4);
+    meter (mr.removeFromLeft (24), e.outL, "L"); mr.removeFromLeft (4);
+    meter (mr.removeFromLeft (24), e.outR, "R");
 }
 
-// ---------------- editor ----------------
 JesiennaEditor::JesiennaEditor (JesiennaProcessor& p) : AudioProcessorEditor (p), proc (p)
 {
     setLookAndFeel (&look);
-    using G = ParamPage::Group;
-    tabs.addTab ("Gitara", JwLook::bg(), new ParamPage (p, {
-        G { "Wejście", { "inCh", "inGain", "gate", "comp" } },
-        G { "Kostka", { "odOn", "odDrive", "odTone", "odLevel" } },
-        G { "Wzmacniacz", { "amp", "ampGain", "bass", "mid", "treble", "presence", "master" } },
-        G { "Kolumna i mikrofon", { "cab", "mic", "cabMix" } },
-        G { "Modulacja", { "modType", "modRate", "modDepth" } },
-        G { "Delay (w tempie)", { "dlyDiv", "dlyMix", "dlyFb", "dlyTone" } },
-        G { "Gitara w miksie", { "gtrLevel", "gtrPan", "gtrSpace" } } }), true);
-    tabs.addTab ("Zespół", JwLook::bg(), new ParamPage (p, {
-        G { "Utwór", { "bandOn", "sync", "song", "key", "style", "tempo" } },
-        G { "Gra", { "keysInst", "energy", "swing" } },
-        G { "Głośności", { "drums", "bassVol", "keysVol", "bandLevel", "bandSpace" } } }), true);
-    tabs.addTab ("Przestrzeń i wyjście", JwLook::bg(), new ParamPage (p, {
-        G { "Przestrzeń", { "room", "spaceMix", "gtrSpace", "bandSpace" } },
-        G { "Barwa i taśma", { "colour", "colourMix", "tape" } },
-        G { "Wyjście", { "limit", "out" } } }), true);
-    tabs.setTabBarDepth (34);
-    addAndMakeVisible (tabs);
-
+    header.ed = this;
+    addAndMakeVisible (content);
+    content.addAndMakeVisible (header);
+    rig = std::make_unique<ui::RigPage> (p);
+    band = std::make_unique<ui::BandPage> (p);
+    space = std::make_unique<ui::SpacePage> (p);
+    for (auto* c : std::initializer_list<Component*> { rig.get(), band.get(), space.get() }) content.addChildComponent (c);
+    const char* names[] = { "Gitara", "Zespół", "Przestrzeń i wyjście" };
+    for (int i = 0; i < 3; ++i)
+    {
+        auto* b = tabButtons.add (new TextButton (jw::U (names[i])));
+        b->setClickingTogglesState (false);
+        b->onClick = [this, i] { showTab (i); };
+        content.addAndMakeVisible (b);
+    }
     for (int i = 0; i < p.getNumPrograms(); ++i) presetBox.addItem (p.getProgramName (i), i + 1);
-    presetBox.setTextWhenNothingSelected ("Brzmienia…");
+    presetBox.setTextWhenNothingSelected (jw::U ("Gotowe brzmienia…"));
     presetBox.onChange = [this] { if (presetBox.getSelectedId() > 0) proc.setCurrentProgram (presetBox.getSelectedId() - 1); };
-    addAndMakeVisible (presetBox);
-    status.setJustificationType (Justification::centredLeft); status.setColour (Label::textColourId, JwLook::amber());
-    addAndMakeVisible (status);
+    content.addAndMakeVisible (presetBox);
+    status.setJustificationType (Justification::centredLeft); status.setColour (Label::textColourId, ui::col::amber);
+    status.setFont (FontOptions (12.0f));
+    content.addAndMakeVisible (status);
     tbuf.assign (4096, 0.0f);
-    setResizable (true, true); setResizeLimits (900, 600, 1800, 1200);
-    setSize (1120, 720);
+
+    content.setBounds (0, 0, W, H);
+    header.setBounds (0, 0, W, 82);
+    for (int i = 0; i < 3; ++i) tabButtons[i]->setBounds (16 + i * 190, 88, 184, 32);
+    presetBox.setBounds (390, 16, 300, 30);
+    status.setBounds (390, 50, 340, 20);
+    for (auto* c : std::initializer_list<Component*> { rig.get(), band.get(), space.get() }) c->setBounds (0, 126, W, H - 126);
+    showTab (0);
+
+    setResizable (true, true);
+    getConstrainer()->setFixedAspectRatio ((double) W / H);
+    setResizeLimits (W * 2 / 3, H * 2 / 3, W * 2, H * 2);
+    setSize (W, H);
     startTimerHz (20);
 }
 
 JesiennaEditor::~JesiennaEditor() { setLookAndFeel (nullptr); }
 
+void JesiennaEditor::showTab (int i)
+{
+    tab = i;
+    rig->setVisible (i == 0); band->setVisible (i == 1); space->setVisible (i == 2);
+    for (int k = 0; k < tabButtons.size(); ++k) tabButtons[k]->setToggleState (k == i, dontSendNotification);
+}
+
 void JesiennaEditor::resized()
 {
-    auto r = getLocalBounds();
-    r.removeFromTop (78);
-    presetBox.setBounds (280, 12, jmin (300, getWidth() - 760), 28);
-    status.setBounds (280, 46, getWidth() - 760, 20);
-    tabs.setBounds (r.reduced (6, 0).withTrimmedBottom (6));
+    const float s = (float) getWidth() / W;
+    content.setTransform (AffineTransform::scale (s));
 }
 
 void JesiennaEditor::paint (Graphics& g)
 {
-    g.fillAll (JwLook::bg());
-    auto top = getLocalBounds().removeFromTop (78).reduced (12, 8);
-    g.setColour (JwLook::amber()); g.setFont (FontOptions (24.0f, Font::bold));
-    g.drawText ("Jesienna Warszawa", top.removeFromLeft (260).removeFromTop (30), Justification::left);
-    g.setColour (Colour (0xff8f8274)); g.setFont (FontOptions (12.0f));
-    g.drawText ("gitara · zespół · przestrzeń", 12, 44, 250, 16, Justification::left);
-
-    // tuner
-    auto tr = Rectangle<int> (getWidth() - 470, 10, 220, 58);
-    g.setColour (JwLook::panel()); g.fillRoundedRectangle (tr.toFloat(), 8);
-    g.setColour (Colour (0xffeee2d4)); g.setFont (FontOptions (22.0f, Font::bold));
-    g.drawText (tunerNote.isEmpty() ? "–" : tunerNote, tr.removeFromLeft (70), Justification::centred);
-    auto scale = tr.reduced (8, 18);
-    g.setColour (Colour (0xff4a3a30)); g.fillRect (scale.withHeight (2).withY (scale.getCentreY()));
-    g.fillRect (scale.getCentreX() - 1, scale.getY(), 2, scale.getHeight());
-    if (tunerNote.isNotEmpty())
-    {
-        const float x = (float) scale.getCentreX() + tunerCents / 50.0f * scale.getWidth() / 2.0f;
-        g.setColour (std::abs (tunerCents) < 4 ? Colour (0xff8fd18a) : JwLook::amber());
-        g.fillRoundedRectangle (x - 3, (float) scale.getY() - 2, 6, (float) scale.getHeight() + 4, 3);
-        g.setFont (FontOptions (11.0f)); g.setColour (Colour (0xff8f8274));
-        g.drawText (String (tunerHz, 1) + " Hz", scale.translated (0, 16), Justification::centred);
-    }
-
-    // band display + meters
-    auto br = Rectangle<int> (getWidth() - 240, 10, 140, 58);
-    g.setColour (JwLook::panel()); g.fillRoundedRectangle (br.toFloat(), 8);
-    g.setColour (Colour (0xffeee2d4)); g.setFont (FontOptions (22.0f, Font::bold));
-    g.drawText (chordText.isEmpty() ? "–" : chordText, br.removeFromTop (34), Justification::centred);
-    g.setColour (Colour (0xff8f8274)); g.setFont (FontOptions (12.0f)); g.drawText (barText, br, Justification::centred);
-
-    auto mr = Rectangle<int> (getWidth() - 92, 12, 80, 54);
-    auto meter = [&] (Rectangle<int> r, float lvl, const char* lab)
-    {
-        g.setColour (Colour (0xff2b221d)); g.fillRect (r.removeFromTop (r.getHeight() - 14));
-        const float db = jlimit (-60.0f, 0.0f, Decibels::gainToDecibels (lvl + 1e-6f));
-        auto bar = r.withY (12).withHeight (40); bar = bar.withTrimmedTop ((int) (bar.getHeight() * (-db / 60.0f)));
-        g.setColour (db > -3 ? Colours::indianred : JwLook::amber()); g.fillRect (bar.withY (bar.getY()));
-        g.setColour (Colour (0xff8f8274)); g.setFont (FontOptions (10.0f)); g.drawText (lab, r, Justification::centred);
-    };
-    meter (mr.removeFromLeft (24), inLevel, "IN"); mr.removeFromLeft (4);
-    meter (mr.removeFromLeft (22), outL, "L"); mr.removeFromLeft (4);
-    meter (mr.removeFromLeft (22), outR, "R");
+    g.fillAll (ui::col::bg);
+    g.setColour (ui::col::line);
+    g.drawHorizontalLine ((int) (123 * getWidth() / (float) W), 0, (float) getWidth());
 }
 
 void JesiennaEditor::timerCallback()
@@ -246,11 +973,12 @@ void JesiennaEditor::timerCallback()
     if (root >= 0 && proc.apvts.getRawParameterValue ("bandOn")->load() > 0.5f)
     {
         chordText = String (nm[root % 12]) + jw::chordTypes()[(size_t) proc.band.uiChordType.load()].key;
-        barText = "takt " + String (proc.band.uiBar.load() + 1) + " · " + String (proc.band.currentBpm(), 0) + " BPM";
+        barText = "takt " + String (proc.band.uiBar.load() + 1) + jw::U (" · ") + String (proc.band.currentBpm(), 0) + " BPM";
     }
-    else { chordText = {}; barText = "zespół wyłączony"; }
+    else { chordText = {}; barText = jw::U ("zespół wyłączony"); }
     status.setText (proc.statusText(), dontSendNotification);
-    repaint (0, 0, getWidth(), 78);
+    header.repaint (W - 520, 0, 520, 82);
+    if (tab == 2) space->repaint();
 }
 
 void JesiennaEditor::updateTuner()
@@ -264,19 +992,17 @@ void JesiennaEditor::updateTuner()
         push (s1, z1); push (s2, z2); fifo.finishedRead (z1 + z2);
     }
     const double rate = proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000;
-    // linearise the ring buffer, decimate to ~12 kHz
     const int dec = jmax (1, (int) std::round (rate / 12000.0)); const double r = rate / dec;
     std::vector<float> x; x.reserve (tbuf.size() / (size_t) dec);
     for (int i = 0; i < (int) tbuf.size(); i += dec) x.push_back (tbuf[(size_t) ((tfill + i) % (int) tbuf.size())]);
     float pk = 0; for (auto v : x) pk = jmax (pk, std::abs (v));
     if (pk < 0.004f) { tunerNote = {}; return; }
-    // YIN difference function
-    const int W = (int) x.size() / 2, minLag = (int) (r / 1100), maxLag = jmin (W - 2, (int) (r / 60));
+    const int Wn = (int) x.size() / 2, minLag = (int) (r / 1100), maxLag = jmin (Wn - 2, (int) (r / 60));
     std::vector<float> d ((size_t) maxLag + 2, 0.0f);
     float run = 0; int best = -1;
     for (int tau = 1; tau <= maxLag; ++tau)
     {
-        float s = 0; for (int i = 0; i < W; ++i) { const float q = x[(size_t) i] - x[(size_t) (i + tau)]; s += q * q; }
+        float s = 0; for (int i = 0; i < Wn; ++i) { const float q = x[(size_t) i] - x[(size_t) (i + tau)]; s += q * q; }
         run += s; d[(size_t) tau] = s * tau / jmax (1e-9f, run);
     }
     for (int tau = jmax (2, minLag); tau < maxLag; ++tau)

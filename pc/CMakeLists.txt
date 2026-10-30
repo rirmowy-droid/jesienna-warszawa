@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(JesiennaWarszawa VERSION 1.0.0 LANGUAGES C CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -14,6 +14,18 @@ else()
   FetchContent_Declare(juce GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 8.0.4 GIT_SHALLOW TRUE)
   FetchContent_MakeAvailable(juce)
 endif()
+
+# Eigen (header-only) for the Neural Amp Modeler core
+if(EIGEN_DIR)
+  set(JW_EIGEN ${EIGEN_DIR})
+else()
+  include(FetchContent)
+  FetchContent_Declare(eigen URL https://github.com/eigen-mirror/eigen/archive/bc3b39870ecb690a623a3f49149a358b95c5781d.tar.gz
+                        SOURCE_SUBDIR no-cmake-here)   # headers only: do not add Eigen's own CMake project
+  FetchContent_MakeAvailable(eigen)
+  set(JW_EIGEN ${eigen_SOURCE_DIR})
+endif()
+file(GLOB_RECURSE NAM_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/NAM/*.cpp)
 
 option(JW_ASIO "Build the standalone app with ASIO (needs the ASIO SDK in ASIO_SDK_DIR)" OFF)
 
@@ -34,7 +46,12 @@ juce_add_plugin(JesiennaWarszawa
   MICROPHONE_PERMISSION_ENABLED TRUE
   MICROPHONE_PERMISSION_TEXT "Wejście gitary")
 
-target_sources(JesiennaWarszawa PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+target_sources(JesiennaWarszawa PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp ${NAM_SOURCES})
+target_include_directories(JesiennaWarszawa PRIVATE ThirdParty ThirdParty/nlohmann ${JW_EIGEN})
+target_compile_definitions(JesiennaWarszawa PRIVATE NAM_SAMPLE_FLOAT NOMINMAX)
+if(MSVC)
+  target_compile_options(JesiennaWarszawa PRIVATE /bigobj /utf-8)
+endif()
 target_compile_definitions(JesiennaWarszawa PUBLIC
   JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
   JUCE_USE_MP3AUDIOFORMAT=1 JUCE_DISPLAY_SPLASH_SCREEN=0)

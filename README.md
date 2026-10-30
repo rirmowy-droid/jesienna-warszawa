@@ -54,7 +54,9 @@ Kolejne wersje instalują się na poprzednią (wszystkie są podpisane tym samym
 Folder `pc/` – wtyczka VST3 (FL Studio, Reaper, Ableton, Cubase…) i samodzielna aplikacja dla Windows, zbudowane na JUCE.
 Instalator `JesiennaWarszawa-Setup.exe` budują GitHub Actions (`.github/workflows/pc.yml`) i wrzucają do zakładki **Releases** (tagi `pc-N`).
 
-- **Gitara:** bramka, kompresor, przester (kostka), 7 modeli wzmacniaczy (oversampling ×4), 25 IR kolumn (21 prawdziwych 4×12 Greenback/V30 na CC0 + 4 syntetyczne komba), 5 charakterów mikrofonu, chorus/wibrato/tremolo, delay w tempie DAW, tuner.
+- **Prawdziwe wzmacniacze i kostki (NAM):** 30 profili wzmacniaczy i 15 kostek z kolekcji społeczności Neural Amp Modeler (GPL v3, `pc/data/nam`), silnik NeuralAmpModelerCore (MIT) z resamplingiem do 48 kHz; własne pliki `.nam` z folderu `Dokumenty/Jesienna Warszawa/NAM` są wyrównywane głośnościowo przy wczytaniu.
+- **Wygląd:** pedalboard z kostkami, głowa wzmacniacza w stylu wybranego modelu (Fender, Vox, Marshall, tweed…), kolumna z mikrofonem, scena zespołu z akordami, rack przestrzeni.
+- **Gitara:** bramka, kompresor, przester (kostka), 7 wbudowanych modeli wzmacniaczy (oversampling ×4), 25 IR kolumn (21 prawdziwych 4×12 Greenback/V30 na CC0 + 4 syntetyczne komba), 5 charakterów mikrofonu, chorus/wibrato/tremolo, delay w tempie DAW, tuner.
 - **Zespół:** perkusja (Salamander), kontrabas, Rhodes albo fortepian; 16 utworów (ballady, standardy, bluesy), styl swing/ballada/prosto/bossa, energia, swing. Gra w tempie, metrum i takcie projektu DAW (albo we własnym tempie).
 - **Przestrzeń i wyjście:** 26 przestrzeni (kluby, tunele, ulice, kościoły, płyta, sprężyny), barwa (kasety, taśma szpulowa, gramofon, telefon), taśma (wow, nasycenie, szum), limiter, 8 gotowych brzmień.
 

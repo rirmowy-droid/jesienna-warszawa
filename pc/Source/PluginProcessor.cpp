@@ -4,66 +4,90 @@
 using APVTS = juce::AudioProcessorValueTreeState;
 using namespace juce;
 
+using jw::U;
+
 static StringArray names (const juce::Array<jw::IrEntry>& a, const String& none)
 {
     StringArray s; if (none.isNotEmpty()) s.add (none);
     for (auto& e : a) s.add (e.name);
-    if (s.isEmpty()) s.add ("(brak plików – zainstaluj dane)");
+    if (s.isEmpty()) s.add (U ("(brak plików – zainstaluj dane)"));
+    return s;
+}
+
+StringArray JesiennaProcessor::ampChoices()
+{
+    StringArray s; for (auto& a : jw::ampModels()) s.add (U (a.name) + U (" · model"));
+    for (auto& n : jw::listNam ("amp")) s.add (n.name);
+    return s;
+}
+StringArray JesiennaProcessor::pedalChoices()
+{
+    StringArray s { U ("Jesienny overdrive (wbudowany)") };
+    for (auto& n : jw::listNam ("pedal")) s.add (n.name);
     return s;
 }
 
 APVTS::ParameterLayout JesiennaProcessor::createLayout()
 {
     std::vector<std::unique_ptr<RangedAudioParameter>> p;
-    auto F = [&] (const char* id, const char* name, float lo, float hi, float def, const char* unit = "", float skewMid = -1)
+    // value → text, short and readable
+    auto pct = [] (float v, int) { return String (juce::roundToInt (v * 100)) + " %"; };
+    auto db  = [] (float v, int) { return (v > 0.05f ? "+" : "") + String (v, 1) + " dB"; };
+    auto pan = [] (float v, int) { const int k = juce::roundToInt (v * 100); return k == 0 ? U ("środek") : (k < 0 ? "L " + String (-k) : "P " + String (k)); };
+    auto bpm = [] (float v, int) { return String (juce::roundToInt (v)) + " BPM"; };
+    auto ten = [] (float v, int) { return String (v * 10.0f, 1); };          // amp-style 0–10
+    using Fmt = std::function<String (float, int)>;
+    auto F = [&] (const char* id, const char* name, float lo, float hi, float def, Fmt fmt)
     {
-        NormalisableRange<float> r (lo, hi, 0.0f); if (skewMid > lo && skewMid < hi) r.setSkewForCentre (skewMid);
-        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, name, r, def, AudioParameterFloatAttributes().withLabel (unit)));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, U (name), NormalisableRange<float> (lo, hi), def,
+                                                            AudioParameterFloatAttributes().withStringFromValueFunction (fmt)));
     };
-    auto C = [&] (const char* id, const char* name, StringArray choices, int def) { p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id, 1 }, name, choices, def)); };
-    auto B = [&] (const char* id, const char* name, bool def) { p.push_back (std::make_unique<AudioParameterBool> (ParameterID { id, 1 }, name, def)); };
+    auto C = [&] (const char* id, const char* name, StringArray choices, int def) { p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { id, 1 }, U (name), choices, def)); };
+    auto B = [&] (const char* id, const char* name, bool def) { p.push_back (std::make_unique<AudioParameterBool> (ParameterID { id, 1 }, U (name), def)); };
 
     // ---- guitar ----
-    C ("inCh", "Wejście gitary", { "Lewy kanał (wejście 1)", "Prawy kanał (wejście 2)", "Suma L+P" }, 0);
-    F ("inGain", "Wzmocnienie wejścia", -24, 24, 0, "dB");
-    F ("gate", "Bramka szumów", -90, -30, -70, "dB");
-    F ("comp", "Kompresor", 0, 1, 0.2f);
-    B ("odOn", "Przester (kostka) wł.", false);
-    F ("odDrive", "Przester – gain", 0, 1, 0.4f); F ("odTone", "Przester – barwa", 0, 1, 0.5f); F ("odLevel", "Przester – poziom", 0, 1, 0.5f);
-    StringArray amps; for (auto& a : jw::ampModels()) amps.add (a.name);
-    C ("amp", "Wzmacniacz", amps, 1);
-    F ("ampGain", "Gain", 0, 1, 0.35f); F ("bass", "Bas", 0, 1, 0.5f); F ("mid", "Środek", 0, 1, 0.5f);
-    F ("treble", "Góra", 0, 1, 0.5f); F ("presence", "Presence", 0, 1, 0.5f); F ("master", "Master wzm.", 0, 1, 0.6f);
-    C ("cab", "Kolumna (IR)", names (jw::listCabs(), "Bez kolumny (DI)"), 1);
-    F ("cabMix", "Kolumna – miks", 0, 1, 1);
-    StringArray mics; for (auto* m : jw::micNames()) mics.add (m);
+    C ("inCh", "Wejście gitary", U ({ "Lewy kanał (wejście 1)", "Prawy kanał (wejście 2)", "Suma L+P" }), 0);
+    F ("inGain", "Wzmocnienie wejścia", -24, 24, 0, db);
+    F ("gate", "Bramka szumów", -90, -30, -70, [] (float v, int) { return v <= -89 ? U ("wył.") : String (juce::roundToInt (v)) + " dB"; });
+    F ("comp", "Kompresor", 0, 1, 0.2f, pct);
+    B ("odOn", "Przester włączony", false);
+    C ("pedal", "Kostka przesteru", pedalChoices(), 0);
+    F ("odDrive", "Przester – drive", 0, 1, 0.4f, ten); F ("odTone", "Przester – ton", 0, 1, 0.5f, ten); F ("odLevel", "Przester – poziom", 0, 1, 0.5f, ten);
+    C ("amp", "Wzmacniacz", ampChoices(), jw::builtInAmps);   // first captured amp by default
+    F ("ampGain", "Gain", 0, 1, 0.5f, ten); F ("bass", "Bas", 0, 1, 0.5f, ten); F ("mid", "Środek", 0, 1, 0.5f, ten);
+    F ("treble", "Góra", 0, 1, 0.5f, ten); F ("presence", "Presence", 0, 1, 0.5f, ten); F ("master", "Master", 0, 1, 0.6f, ten);
+    C ("cab", "Kolumna", names (jw::listCabs(), U ("Bez kolumny (DI)")), 5);
+    F ("cabMix", "Kolumna – miks", 0, 1, 1, pct);
+    StringArray mics; for (auto* m : jw::micNames()) mics.add (U (m));
     C ("mic", "Mikrofon", mics, 1);
-    C ("modType", "Modulacja", { "Brak", "Chorus", "Wibrato", "Tremolo" }, 0);
-    F ("modRate", "Modulacja – szybkość", 0, 1, 0.3f); F ("modDepth", "Modulacja – głębokość", 0, 1, 0.3f);
-    F ("dlyMix", "Delay – miks", 0, 1, 0.15f); F ("dlyFb", "Delay – powtórzenia", 0, 0.95f, 0.3f); F ("dlyTone", "Delay – barwa", 0, 1, 0.5f);
-    C ("dlyDiv", "Delay – podział", { "ćwierćnuta", "ósemka z kropką", "ósemka", "ćwierćnuta triola", "półnuta", "szesnastka" }, 1);
-    F ("gtrLevel", "Gitara – głośność", 0, 1.5f, 0.8f); F ("gtrPan", "Gitara – panorama", -1, 1, 0); F ("gtrSpace", "Gitara – przestrzeń", 0, 1, 0.35f);
+    B ("modOn", "Modulacja włączona", false);
+    C ("modType", "Modulacja – rodzaj", U ({ "Chorus", "Wibrato", "Tremolo" }), 0);
+    F ("modRate", "Modulacja – szybkość", 0, 1, 0.3f, ten); F ("modDepth", "Modulacja – głębokość", 0, 1, 0.3f, ten);
+    B ("dlyOn", "Delay włączony", true);
+    F ("dlyMix", "Delay – miks", 0, 1, 0.15f, pct); F ("dlyFb", "Delay – powtórzenia", 0, 0.95f, 0.3f, pct); F ("dlyTone", "Delay – barwa", 0, 1, 0.5f, ten);
+    C ("dlyDiv", "Delay – podział", U ({ "ćwierćnuta", "ósemka z kropką", "ósemka", "triola ćwierćnutowa", "półnuta", "szesnastka" }), 1);
+    F ("gtrLevel", "Gitara – głośność", 0, 1.5f, 0.8f, pct); F ("gtrPan", "Gitara – panorama", -1, 1, 0, pan); F ("gtrSpace", "Gitara – przestrzeń", 0, 1, 0.35f, pct);
 
     // ---- band ----
     B ("bandOn", "Zespół gra", false);
     B ("sync", "Synchronizuj z DAW", true);
-    StringArray songNames; for (auto& s : jw::songs()) songNames.add (s.name);
+    StringArray songNames; for (auto& s : jw::songs()) songNames.add (U (s.name));
     C ("song", "Utwór", songNames, 0);
-    C ("key", "Tonacja", { "Oryginalna", "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/B", "H" }, 0);
-    C ("style", "Styl", { "Z utworu", "Swing", "Ballada", "Prosto (rock/blues)", "Bossa" }, 0);
-    C ("keysInst", "Klawisze", { "Rhodes", "Fortepian" }, 0);
-    F ("tempo", "Tempo (bez DAW)", 40, 240, 90, "BPM");
-    F ("energy", "Energia", 0, 1, 0.45f); F ("swing", "Swing", 0, 1, 0.6f);
-    F ("drums", "Perkusja", 0, 1.5f, 0.8f); F ("bassVol", "Kontrabas", 0, 1.5f, 0.8f); F ("keysVol", "Klawisze – głośność", 0, 1.5f, 0.7f);
-    F ("bandLevel", "Zespół – głośność", 0, 1.5f, 0.7f); F ("bandSpace", "Zespół – przestrzeń", 0, 1, 0.3f);
+    C ("key", "Tonacja", U ({ "Oryginalna", "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/B", "H" }), 0);
+    C ("style", "Styl", U ({ "Z utworu", "Swing", "Ballada", "Prosto (rock/blues)", "Bossa" }), 0);
+    C ("keysInst", "Klawisze", U ({ "Rhodes", "Fortepian" }), 0);
+    F ("tempo", "Tempo (bez DAW)", 40, 240, 90, bpm);
+    F ("energy", "Energia", 0, 1, 0.45f, pct); F ("swing", "Swing", 0, 1, 0.6f, pct);
+    F ("drums", "Perkusja", 0, 1.5f, 0.8f, pct); F ("bassVol", "Kontrabas", 0, 1.5f, 0.8f, pct); F ("keysVol", "Klawisze – głośność", 0, 1.5f, 0.7f, pct);
+    F ("bandLevel", "Zespół – głośność", 0, 1.5f, 0.7f, pct); F ("bandSpace", "Zespół – przestrzeń", 0, 1, 0.3f, pct);
 
     // ---- space & output ----
     C ("room", "Przestrzeń", names (jw::listRooms(), ""), 0);
-    F ("spaceMix", "Przestrzeń – poziom", 0, 1, 0.5f);
-    C ("colour", "Barwa (mikrofon/kaseta)", names (jw::listColours(), "Brak"), 0);
-    F ("colourMix", "Barwa – miks", 0, 1, 0.6f);
-    F ("tape", "Taśma (wow, nasycenie, szum)", 0, 1, 0.15f);
-    F ("out", "Wyjście", -24, 12, 0, "dB");
+    F ("spaceMix", "Przestrzeń – poziom", 0, 1, 0.5f, pct);
+    C ("colour", "Barwa", names (jw::listColours(), U ("Brak")), 0);
+    F ("colourMix", "Barwa – miks", 0, 1, 0.6f, pct);
+    F ("tape", "Taśma", 0, 1, 0.15f, pct);
+    F ("out", "Wyjście", -24, 12, 0, db);
     B ("limit", "Limiter", true);
     return { p.begin(), p.end() };
 }
@@ -74,6 +98,7 @@ JesiennaProcessor::JesiennaProcessor()
 {
     dataFolder = jw::dataDir();
     cabs = jw::listCabs(); rooms = jw::listRooms(); colours = jw::listColours();
+    namAmps = jw::listNam ("amp"); namPedals = jw::listNam ("pedal");
     band.isStandalone = wrapperType == wrapperType_Standalone;
     startTimerHz (10);
 }
@@ -102,7 +127,7 @@ void JesiennaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     hissHp.coefficients = dsp::IIR::Coefficients<float>::makeHighPass (sr, 2500);
     tapeLpL.reset(); tapeLpR.reset(); hissHp.reset();
     setLatencySamples (rig.latencySamples());
-    lastCab = lastRoom = lastColour = -1;   // (re)load IRs at the new rate
+    lastCab = lastRoom = lastColour = -1;   // (re)load IRs at the new rate (captured amps re-prepare themselves)
     timerCallback();
 }
 
@@ -136,6 +161,18 @@ void JesiennaProcessor::timerCallback()
         const File f = c >= 1 && c - 1 < cabs.size() ? cabs[c - 1].file : File();
         pool.addJob ([this, f] { rig.loadCab (f); --loadingJobs; });
     }
+    if (const int a = pi ("amp") - jw::builtInAmps; a != lastNamAmp)
+    {
+        lastNamAmp = a; ++loadingJobs;
+        const File f = a >= 0 && a < namAmps.size() ? namAmps[a].file : File();
+        pool.addJob ([this, f] { rig.ampNam.load (f); --loadingJobs; });
+    }
+    if (const int pd = pi ("pedal") - 1; pd != lastNamPedal)
+    {
+        lastNamPedal = pd; ++loadingJobs;
+        const File f = pd >= 0 && pd < namPedals.size() ? namPedals[pd].file : File();
+        pool.addJob ([this, f] { rig.pedalNam.load (f); --loadingJobs; });
+    }
     if (const int r = pi ("room"); r != lastRoom && r < rooms.size()) { lastRoom = r; loadIr (space, rooms[r].file, 6.0, true); }
     if (const int c = pi ("colour"); c != lastColour) { lastColour = c; if (c >= 1 && c - 1 < colours.size()) loadIr (colour, colours[c - 1].file, 1.0, true); }
 
@@ -157,8 +194,8 @@ void JesiennaProcessor::timerCallback()
 
 String JesiennaProcessor::statusText() const
 {
-    if (! dataFolder.exists()) return "Nie znaleziono danych (IR i sampli). Uruchom instalator albo ustaw JESIENNA_DATA.";
-    if (loadingJobs > 0) return "Wczytywanie…";
+    if (! dataFolder.exists()) return U ("Nie znaleziono danych (IR i sampli). Uruchom instalator albo ustaw JESIENNA_DATA.");
+    if (loadingJobs > 0) return U ("Wczytywanie…");
     return {};
 }
 
@@ -184,7 +221,7 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 {
     ScopedNoDenormals nd;
     const int n = buffer.getNumSamples();
-    if (n > gtr.getNumSamples()) for (auto* b : { &gtr, &bnd, &send, &wet, &col }) b->setSize (2, n, false, false, true);
+    if (n > gtr.getNumSamples()) for (auto* b : { &gtr, &bnd, &send, &wet, &col }) b->setSize (2, n, false, false, true);   // should not happen
     const int inChs = getTotalNumInputChannels();
 
     // ---- guitar input ----
@@ -196,10 +233,20 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 
     jw::RigParams rp;
     rp.inGainDb = pf ("inGain"); rp.gateDb = pf ("gate"); rp.comp = pf ("comp");
-    rp.odOn = pf ("odOn") > 0.5f; rp.odDrive = pf ("odDrive"); rp.odTone = pf ("odTone"); rp.odLevel = pf ("odLevel");
+    rp.odOn = pf ("odOn") > 0.5f; rp.pedal = pi ("pedal");
+    // stored trims level the bundled profiles; the player's own files are levelled from a measurement made when loading
+    auto trimOf = [] (const juce::Array<jw::NamEntry>& list, int i, const jw::NamSlot& slot, float targetDb)
+    {
+        if (i < 0 || i >= list.size()) return 0.0f;
+        const float t = list.getReference (i).trimDb;
+        return std::isnan (t) ? targetDb - slot.measuredDb.load() : t;
+    };
+    rp.pedalTrimDb = trimOf (namPedals, rp.pedal - 1, rig.pedalNam, jw::NamSlot::testInputDb);
+    rp.ampTrimDb = trimOf (namAmps, pi ("amp") - jw::builtInAmps, rig.ampNam, -10.0f);
+    rp.modOn = pf ("modOn") > 0.5f; rp.dlyOn = pf ("dlyOn") > 0.5f; rp.odDrive = pf ("odDrive"); rp.odTone = pf ("odTone"); rp.odLevel = pf ("odLevel");
     rp.amp = pi ("amp"); rp.ampGain = pf ("ampGain"); rp.bass = pf ("bass"); rp.mid = pf ("mid"); rp.treble = pf ("treble"); rp.presence = pf ("presence"); rp.master = pf ("master");
     rp.cab = pi ("cab"); rp.cabMix = rp.cab == 0 ? 0.0f : pf ("cabMix"); rp.mic = pi ("mic");
-    rp.modType = pi ("modType"); rp.modRate = pf ("modRate"); rp.modDepth = pf ("modDepth");
+    rp.modType = pi ("modType") + 1; rp.modRate = pf ("modRate"); rp.modDepth = pf ("modDepth");
     rp.dlyMix = pf ("dlyMix"); rp.dlyFb = pf ("dlyFb"); rp.dlyTone = pf ("dlyTone"); rp.dlyDiv = pi ("dlyDiv");
     rp.level = pf ("gtrLevel"); rp.pan = pf ("gtrPan");
     double bpm = pf ("tempo");
@@ -260,14 +307,14 @@ void JesiennaProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
 const std::vector<JesiennaProcessor::Preset>& JesiennaProcessor::presets()
 {
     static const std::vector<Preset> p {
-        { "Jesienna noc – czysty jazz", { {"amp",1},{"ampGain",.3f},{"bass",.55f},{"treble",.4f},{"cab",1},{"mic",2},{"modType",0},{"dlyMix",.12f},{"dlyDiv",1},{"room",0},{"gtrSpace",.4f},{"tape",.15f},{"odOn",0} } },
-        { "Mgła – ambient (chorus + długi delay)", { {"amp",0},{"ampGain",.25f},{"treble",.55f},{"cab",2},{"mic",3},{"modType",1},{"modRate",.2f},{"modDepth",.5f},{"dlyMix",.35f},{"dlyFb",.6f},{"dlyTone",.3f},{"dlyDiv",0},{"gtrSpace",.7f},{"spaceMix",.7f},{"room",22},{"odOn",0} } },
-        { "Tweed blues", { {"amp",2},{"ampGain",.55f},{"mid",.6f},{"cab",4},{"mic",1},{"modType",0},{"dlyMix",.1f},{"dlyDiv",2},{"gtrSpace",.25f},{"odOn",0} } },
-        { "Brytyjski crunch + kostka", { {"amp",3},{"ampGain",.45f},{"cab",9},{"mic",1},{"odOn",1},{"odDrive",.35f},{"odLevel",.6f},{"dlyMix",.12f},{"gtrSpace",.25f} } },
-        { "Lead na solo", { {"amp",4},{"ampGain",.6f},{"mid",.65f},{"cab",21},{"mic",1},{"odOn",1},{"odDrive",.2f},{"odLevel",.7f},{"dlyMix",.22f},{"dlyFb",.4f},{"dlyDiv",1},{"gtrSpace",.35f} } },
-        { "Ciężko – nowoczesny high-gain", { {"amp",5},{"ampGain",.55f},{"bass",.6f},{"mid",.4f},{"cab",16},{"mic",1},{"odOn",1},{"odDrive",.1f},{"odLevel",.8f},{"gate",-55},{"dlyMix",.05f},{"gtrSpace",.15f} } },
-        { "Stare radio / kaseta", { {"amp",6},{"ampGain",.5f},{"cab",0},{"mic",4},{"modType",3},{"modRate",.4f},{"modDepth",.25f},{"tape",.6f},{"colour",1},{"colourMix",.7f} } },
-        { "Tremolo w deszczu (surf/noir)", { {"amp",0},{"ampGain",.3f},{"cab",2},{"mic",2},{"modType",3},{"modRate",.45f},{"modDepth",.55f},{"dlyMix",.18f},{"gtrSpace",.6f},{"spaceMix",.6f} } },
+        { "Jesienna noc – czysty jazz", { {"amp",7},{"ampGain",.45f},{"bass",.55f},{"treble",.45f},{"cab",2},{"mic",2},{"dlyOn",1},{"dlyMix",.12f},{"gtrSpace",.4f} } },
+        { "Mgła – ambient (chorus i długi delay)", { {"amp",9},{"ampGain",.4f},{"treble",.55f},{"cab",2},{"mic",3},{"modOn",1},{"modType",0},{"modRate",.2f},{"modDepth",.5f},{"dlyOn",1},{"dlyMix",.35f},{"dlyFb",.6f},{"dlyTone",.3f},{"dlyDiv",0},{"gtrSpace",.7f},{"spaceMix",.7f},{"room",22} } },
+        { "Tremolo w deszczu", { {"amp",8},{"ampGain",.45f},{"cab",2},{"mic",2},{"modOn",1},{"modType",2},{"modRate",.45f},{"modDepth",.55f},{"dlyOn",1},{"dlyMix",.18f},{"gtrSpace",.6f},{"spaceMix",.6f} } },
+        { "Tweed blues", { {"amp",18},{"ampGain",.5f},{"mid",.6f},{"cab",4},{"mic",1},{"dlyOn",1},{"dlyMix",.1f},{"dlyDiv",2},{"gtrSpace",.25f} } },
+        { "Brytyjski crunch + Tube Screamer", { {"amp",23},{"ampGain",.5f},{"cab",9},{"mic",1},{"odOn",1},{"pedal",1},{"odDrive",.3f},{"odLevel",.6f},{"dlyOn",1},{"dlyMix",.12f},{"gtrSpace",.25f} } },
+        { "Lead na solo", { {"amp",31},{"ampGain",.5f},{"mid",.65f},{"cab",21},{"mic",1},{"odOn",1},{"pedal",2},{"odDrive",.25f},{"odLevel",.6f},{"dlyOn",1},{"dlyMix",.22f},{"dlyFb",.4f},{"dlyDiv",1},{"gtrSpace",.35f} } },
+        { "Ciężko – 5150", { {"amp",35},{"ampGain",.5f},{"bass",.6f},{"mid",.45f},{"cab",16},{"mic",1},{"gate",-55},{"dlyOn",0},{"gtrSpace",.15f} } },
+        { "Stare radio / kaseta", { {"amp",6},{"ampGain",.5f},{"cab",0},{"mic",4},{"modOn",1},{"modType",2},{"modRate",.4f},{"modDepth",.25f},{"tape",.6f},{"colour",1},{"colourMix",.7f} } },
     };
     return p;
 }
@@ -276,11 +323,15 @@ void JesiennaProcessor::setCurrentProgram (int index)
 {
     if (index < 0 || index >= (int) presets().size()) return;
     currentPreset = index;
+    static const char* guitarIds[] = { "inGain","gate","comp","odOn","pedal","odDrive","odTone","odLevel","amp","ampGain","bass","mid","treble","presence","master",
+                                       "cab","cabMix","mic","modOn","modType","modRate","modDepth","dlyOn","dlyMix","dlyFb","dlyTone","dlyDiv","gtrSpace","tape","colour" };
+    for (auto* id : guitarIds)
+        if (auto* prm = apvts.getParameter (id)) prm->setValueNotifyingHost (prm->getDefaultValue());
     for (auto& [id, v] : presets()[(size_t) index].values)
         if (auto* prm = dynamic_cast<RangedAudioParameter*> (apvts.getParameter (id)))
             prm->setValueNotifyingHost (prm->convertTo0to1 (v));
 }
-const String JesiennaProcessor::getProgramName (int index) { return index >= 0 && index < (int) presets().size() ? presets()[(size_t) index].name : String(); }
+const String JesiennaProcessor::getProgramName (int index) { return index >= 0 && index < (int) presets().size() ? U (presets()[(size_t) index].name) : String(); }
 
 void JesiennaProcessor::getStateInformation (MemoryBlock& destData)
 {

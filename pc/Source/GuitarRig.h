@@ -3,6 +3,7 @@
 #pragma once
 #include <juce_dsp/juce_dsp.h>
 #include "Assets.h"
+#include "NamSlot.h"
 
 namespace jw {
 
@@ -48,17 +49,35 @@ inline const std::array<const char*, 5>& micNames()
 struct RigParams
 {
     float inGainDb = 0, gateDb = -70, comp = 0.2f;
-    bool  odOn = false; float odDrive = 0.4f, odTone = 0.5f, odLevel = 0.5f;
-    int   amp = 1; float ampGain = 0.35f, bass = 0.5f, mid = 0.5f, treble = 0.5f, presence = 0.5f, master = 0.6f;
+    bool  odOn = false; int pedal = 0; float odDrive = 0.4f, odTone = 0.5f, odLevel = 0.5f, pedalTrimDb = 0;
+    int   amp = 1; float ampTrimDb = 0;   // amp >= builtInAmps: a captured (NAM) amp
+    bool  modOn = false, dlyOn = true; float ampGain = 0.35f, bass = 0.5f, mid = 0.5f, treble = 0.5f, presence = 0.5f, master = 0.6f;
     int   cab = 0; float cabMix = 1.0f; int mic = 1;
     int   modType = 0; float modRate = 0.3f, modDepth = 0.3f;
     float dlyMix = 0.15f, dlyFb = 0.3f, dlyTone = 0.5f; int dlyDiv = 1; double bpm = 120;
     float level = 0.8f, pan = 0;
 };
 
+/** Fixed integer delay, used to keep the plugin's latency identical whichever amp/pedal is chosen. */
+struct Pad
+{
+    void prepare (int maxLen) { buf.assign ((size_t) juce::jmax (1, maxLen + 1), 0.0f); w = 0; }
+    void process (float* x, int n, int d)
+    {
+        if (d <= 0) return;
+        const int L = (int) buf.size();
+        for (int i = 0; i < n; ++i) { buf[(size_t) w] = x[i]; int r = w - d; if (r < 0) r += L; x[i] = buf[(size_t) r]; if (++w >= L) w = 0; }
+    }
+    std::vector<float> buf; int w = 0;
+};
+
+constexpr int builtInAmps = 7;
+
 class GuitarRig
 {
 public:
+    NamSlot ampNam, pedalNam;
+
     void prepare (double sr, int maxBlock)
     {
         sampleRate = sr; blockSize = maxBlock;
@@ -66,7 +85,7 @@ public:
         oversampler.initProcessing ((size_t) maxBlock);
         juce::dsp::ProcessSpec osSpec { sr * 4, (juce::uint32) maxBlock * 4, 1 };
         for (auto* f : { &preHp, &interLp, &coupling }) { f->prepare (osSpec); f->reset(); }
-        for (auto* f : { &odHp, &odLp, &bassF, &midF, &trebleF, &presF, &mic1, &mic2, &mic3 }) { f->prepare (mono); f->reset(); }
+        for (auto* f : { &odHp, &odLp, &odTilt, &bassF, &midF, &trebleF, &presF, &mic1, &mic2, &mic3 }) { f->prepare (mono); f->reset(); }
         comp.prepare (mono); comp.setAttack (8); comp.setRelease (120);
         cabConv.prepare (mono); cabConv.reset();
         chorus.prepare (stereo); chorus.setCentreDelay (7); chorus.setFeedback (0.1f);
@@ -77,10 +96,14 @@ public:
         early.prepare (mono); early.setMaximumDelayInSamples ((int) (sr * 0.05));
         mono1.setSize (1, maxBlock); dryBuf.setSize (1, maxBlock); work.setSize (2, maxBlock);
         lastAmp = -1; lastMic = -1; gateEnv = 0; gateGain = 0; sag = 0;
+        ampNam.prepare (sr, maxBlock); pedalNam.prepare (sr, maxBlock);
+        namLat = std::abs (sr - 48000.0) > 1 ? NamSlot::prefill : 0;
+        osLat = (int) std::ceil (oversampler.getLatencyInSamples());
+        padPedal.prepare (namLat + 4); padAmp.prepare (juce::jmax (osLat, namLat) + 4);
         updateFilters ({}, true);
     }
 
-    int latencySamples() const { return (int) std::ceil (oversampler.getLatencyInSamples()); }
+    int latencySamples() const { return namLat + juce::jmax (osLat, namLat); }
 
     /** Load a cabinet IR (call off the audio thread). index < 0 = no cabinet. */
     void loadCab (const juce::File& f)
@@ -127,7 +150,22 @@ public:
         if (p.comp > 0.01f) { comp.process (ctx); for (int i = 0; i < n; ++i) x[i] *= dbToGain (p.comp * 8.0f); }
 
         // overdrive pedal: clipped mid-hump on top of the dry signal, then tone and level
-        if (p.odOn)
+        bool pedalDone = false;
+        if (p.odOn && p.pedal > 0)
+        {
+            // captured pedal: drive = input level, level = output; tone = gentle tilt after it
+            const float gIn = dbToGain ((p.odDrive - 0.4f) * 24.0f);
+            for (int i = 0; i < n; ++i) x[i] *= gIn;
+            if (pedalNam.process (x, n))
+            {
+                const float gOut = dbToGain (p.pedalTrimDb + (p.odLevel - 0.5f) * 24.0f) / juce::jmax (0.25f, gIn * 0.5f + 0.5f);
+                for (int i = 0; i < n; ++i) x[i] = odTilt.processSample (x[i]) * gOut;
+                pedalDone = true;
+            }
+            else for (int i = 0; i < n; ++i) x[i] /= gIn;
+        }
+        if (! pedalDone) padPedal.process (x, n, namLat);
+        if (p.odOn && ! pedalDone)
         {
             const float k = 1.0f + p.odDrive * 60.0f;
             for (int i = 0; i < n; ++i)
@@ -138,8 +176,37 @@ public:
             }
         }
 
+        if (p.amp >= builtInAmps && ampNam.active())
+            processCapturedAmp (x, n, p);
+        else
+            processBuiltInAmp (blk, x, n, p);
+
+        // cabinet + microphone
+        if (hasCab && p.cabMix > 0.001f)
+        {
+            auto* dry = dryBuf.getWritePointer (0); std::copy (x, x + n, dry);
+            cabConv.process (ctx);
+            for (int i = 0; i < n; ++i) x[i] = x[i] * p.cabMix * 1.4f + dry[i] * (1.0f - p.cabMix) * 0.25f;
+        }
+        afterAmp (x, n, outL, outR, p);
+    }
+
+private:
+    void processCapturedAmp (float* x, int n, const RigParams& p)
+    {
+        const float gIn = dbToGain ((p.ampGain - 0.5f) * 30.0f);
+        for (int i = 0; i < n; ++i) x[i] *= gIn;
+        if (! ampNam.process (x, n)) return;
+        padAmp.process (x, n, juce::jmax (osLat, namLat) - namLat);
+        const float out = dbToGain (p.ampTrimDb) * (0.2f + p.master * 1.6f) / juce::jmax (0.3f, std::sqrt (gIn));
+        for (int i = 0; i < n; ++i)
+            x[i] = presF.processSample (trebleF.processSample (midF.processSample (bassF.processSample (x[i])))) * out;
+    }
+
+    void processBuiltInAmp (juce::dsp::AudioBlock<float>& blk, float* x, int n, const RigParams& p)
+    {
         // ---- amp: oversampled preamp (two gain stages) ----
-        const auto& m = ampModels()[(size_t) juce::jlimit (0, (int) ampModels().size() - 1, p.amp)];
+        const auto& m = ampModels()[(size_t) (p.amp >= builtInAmps ? 1 : juce::jlimit (0, builtInAmps - 1, p.amp))];
         const float g1 = dbToGain (juce::jmap (p.ampGain, m.gainMin, m.gainMax));
         auto up = oversampler.processSamplesUp (blk);
         auto* o = up.getChannelPointer (0); const int on = (int) up.getNumSamples();
@@ -165,14 +232,11 @@ public:
             v = presF.processSample (v);
             x[i] = v * dbToGain (m.outTrim) * (0.2f + p.master * 1.6f);
         }
+        padAmp.process (x, n, juce::jmax (osLat, namLat) - osLat);
+    }
 
-        // cabinet + microphone
-        if (hasCab && p.cabMix > 0.001f)
-        {
-            auto* dry = dryBuf.getWritePointer (0); std::copy (x, x + n, dry);
-            cabConv.process (ctx);
-            for (int i = 0; i < n; ++i) x[i] = x[i] * p.cabMix * 1.4f + dry[i] * (1.0f - p.cabMix) * 0.25f;
-        }
+    void afterAmp (float* x, int n, float* outL, float* outR, const RigParams& p)
+    {
         for (int i = 0; i < n; ++i) x[i] = mic3.processSample (mic2.processSample (mic1.processSample (x[i])));
         if (p.mic == 4)   // "from a distance": two short early reflections
             for (int i = 0; i < n; ++i)
@@ -184,13 +248,13 @@ public:
         // ---- stereo: modulation, delay, level, pan ----
         auto* L = work.getWritePointer (0); auto* R = work.getWritePointer (1);
         for (int i = 0; i < n; ++i) L[i] = R[i] = x[i];
-        if (p.modType == 1)
+        if (p.modOn && p.modType == 1)
         {
             chorus.setRate (0.2f + p.modRate * 3.0f); chorus.setDepth (p.modDepth); chorus.setMix (0.5f);
             juce::dsp::AudioBlock<float> sb (work); auto s = sb.getSubBlock (0, (size_t) n);
             chorus.process (juce::dsp::ProcessContextReplacing<float> (s));
         }
-        else if (p.modType == 2)          // vibrato: pitch wobble
+        else if (p.modOn && p.modType == 2)          // vibrato: pitch wobble
         {
             const float rate = 2.0f + p.modRate * 6.0f, depth = (float) sampleRate * (0.0005f + p.modDepth * 0.003f);
             for (int i = 0; i < n; ++i)
@@ -200,7 +264,7 @@ public:
                 L[i] = R[i] = vib.popSample (0, depth * (1.0f + std::sin (juce::MathConstants<float>::twoPi * lfo)) + 2.0f);
             }
         }
-        else if (p.modType == 3)          // tremolo (amp-style)
+        else if (p.modOn && p.modType == 3)          // tremolo (amp-style)
         {
             const float rate = 1.5f + p.modRate * 8.0f;
             for (int i = 0; i < n; ++i)
@@ -210,7 +274,7 @@ public:
                 L[i] *= g; R[i] *= g;
             }
         }
-        if (p.dlyMix > 0.001f)
+        if (p.dlyOn && p.dlyMix > 0.001f)
         {
             static const float divs[] = { 1.0f, 0.75f, 0.5f, 2.0f / 3.0f, 2.0f, 0.25f };
             const float q = (float) (60.0 / juce::jmax (30.0, p.bpm)) * divs[juce::jlimit (0, 5, p.dlyDiv)];
@@ -229,7 +293,6 @@ public:
         for (int i = 0; i < n; ++i) { outL[i] = L[i] * gl; outR[i] = R[i] * gr; }
     }
 
-private:
     static float shape (float v, int s)
     {
         if (s == 0) return v > 0 ? std::tanh (v) : std::tanh (v * 0.85f) / 0.85f * 0.9f;     // tube-ish, softer on one side
@@ -246,9 +309,11 @@ private:
     }
     void updateFilters (const RigParams& p, bool force)
     {
-        const auto& m = ampModels()[(size_t) juce::jlimit (0, 6, p.amp)];
+        const bool captured = p.amp >= builtInAmps;
+        static const AmpModel neutral { "", 80, 0, 0, 0, 8000, 120, 650, 3200, 0.7f, 0, 0, 0, 0 };
+        const auto& m = captured ? neutral : ampModels()[(size_t) juce::jlimit (0, 6, p.amp)];
         const double os = sampleRate * 4;
-        const float key = p.bass * 1000 + p.mid * 100 + p.treble * 10 + p.presence + (float) p.amp * 10000 + p.odTone * 0.1f + (float) p.mic * 100000;
+        const double key = p.amp * 1e7 + p.mic * 1e6 + p.bass * 1e5 + p.mid * 1e4 + p.treble * 1e3 + p.presence * 100 + p.odTone * 10;
         if (! force && key == lastKey) return;
         lastKey = key;
         if (force || p.amp != lastAmp)
@@ -264,6 +329,7 @@ private:
         presF.coefficients   = Coefs::makeHighShelf (sampleRate, 5000.0f,   0.7f, dbToGain ((p.presence - 0.5f) * 14));
         odHp.coefficients = Coefs::makeHighPass (sampleRate, 720.0f);
         odLp.coefficients = Coefs::makeLowPass (sampleRate, 900.0f + p.odTone * 5000.0f);
+        odTilt.coefficients = Coefs::makeHighShelf (sampleRate, 1800.0f, 0.7f, dbToGain ((p.odTone - 0.5f) * 14));
         switch (p.mic)
         {
             case 1:  mic1.coefficients = Coefs::makeHighPass (sampleRate, 90.0f); mic2.coefficients = Coefs::makePeakFilter (sampleRate, 5500.0f, 1.0f, dbToGain (4)); mic3.coefficients = Coefs::makeLowShelf (sampleRate, 200.0f, 0.7f, dbToGain (-2)); break;
@@ -276,14 +342,15 @@ private:
 
     double sampleRate = 48000; int blockSize = 512;
     juce::dsp::Oversampling<float> oversampler { 1, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, true };
-    Filter preHp, interLp, coupling, odHp, odLp, bassF, midF, trebleF, presF, mic1, mic2, mic3, dlyLpL, dlyLpR;
+    Filter preHp, interLp, coupling, odHp, odLp, odTilt, bassF, midF, trebleF, presF, mic1, mic2, mic3, dlyLpL, dlyLpR;
     juce::dsp::Compressor<float> comp;
     juce::dsp::Convolution cabConv;
     juce::dsp::Chorus<float> chorus;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> vib, dlyL, dlyR, early;
     juce::AudioBuffer<float> mono1, dryBuf, work;
     std::atomic<bool> hasCab { false };
-    float gateEnv = 0, gateGain = 0, sag = 0, lfo = 0, lastKey = -1, lastDlyTone = -1; int lastAmp = -1, lastMic = -1;
+    Pad padPedal, padAmp; int osLat = 0, namLat = 0;
+    double lastKey = -1; float gateEnv = 0, gateGain = 0, sag = 0, lfo = 0, lastDlyTone = -1; int lastAmp = -1, lastMic = -1;
 };
 
 } // namespace jw

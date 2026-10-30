@@ -167,7 +167,17 @@ public:
         kitI = std::move (kit); bassI = std::move (bass); keysI = std::move (keys);
     }
 
-    std::atomic<int> uiBar { 0 }, uiChordRoot { -1 }, uiChordType { 0 };
+    std::atomic<int> uiBar { 0 }, uiChordRoot { -1 }, uiChordType { 0 }, uiIndex { -1 };
+
+    /** The song's chords, transposed to the chosen key (0 = original). */
+    static std::vector<Chord> progressionFor (int song, int key)
+    {
+        const auto& s = songs()[(size_t) juce::jlimit (0, (int) songs().size() - 1, song)];
+        auto prog = parseProgression (s.chords);
+        const int shift = key <= 0 ? 0 : ((key - 1) - s.key + 12) % 12;
+        for (auto& c : prog) c.root = (c.root + shift) % 12;
+        return prog;
+    }
 
     void process (float* L, float* R, int n, const juce::AudioPlayHead::PositionInfo* host, const Params& p)
     {
@@ -180,9 +190,7 @@ public:
         {
             curSong = p.song; curKey = p.key;
             const auto& s = songs()[(size_t) juce::jlimit (0, (int) songs().size() - 1, p.song)];
-            prog = parseProgression (s.chords);
-            const int shift = p.key <= 0 ? 0 : ((p.key - 1) - s.key + 12) % 12;
-            for (auto& c : prog) c.root = (c.root + shift) % 12;
+            prog = progressionFor (p.song, p.key);
             total = 0; for (auto& c : prog) total += c.bars;
             songMeter = s.meter; songTempo = s.tempo; songStyle = s.style;
         }
@@ -263,7 +271,7 @@ private:
         int idxPrev = -1; if (pos > 0 || bar > 0) chordAt ((double) bar + (double) (pos - 1) / barLen, &idxPrev);
         const bool change = idxPrev != idx || (pos == 0 && bar == 0);
         if (pos == 0) uiBar = (int) bar;
-        if (change) { uiChordRoot = c.root; uiChordType = c.type; }
+        if (change) { uiChordRoot = c.root; uiChordType = c.type; uiIndex = idx; }
         const float E = p.energy;
         // swing: second eighth of a duple beat comes late
         const int swingOff = (glen == 2 && sub == 1 && style != 2 && style != 3) ? (int) (eighthS * (0.12 + 0.2 * p.swing)) : 0;

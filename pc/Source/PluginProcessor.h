@@ -35,6 +35,8 @@ public:
     jw::GuitarRig rig;
     jw::Band band;
     juce::Array<jw::IrEntry> cabs, rooms, colours;
+    juce::Array<jw::NamEntry> namAmps, namPedals;
+    static juce::StringArray ampChoices(), pedalChoices();
     juce::File dataFolder;
     std::atomic<float> outLevelL { 0 }, outLevelR { 0 }, gainReduction { 0 };
     std::atomic<int> loadingJobs { 0 };
@@ -59,7 +61,7 @@ private:
     juce::dsp::IIR::Filter<float> tapeLpL, tapeLpR, hissHp;
     float wowPh = 0, flutPh = 0; juce::Random noise;
     juce::ThreadPool pool { 2 };
-    int lastCab = -1, lastRoom = -1, lastColour = -1, lastKeys = -1; bool kitRequested = false;
+    int lastCab = -1, lastRoom = -1, lastColour = -1, lastKeys = -1, lastNamAmp = -99, lastNamPedal = -99; bool kitRequested = false;
     std::shared_ptr<jw::Instrument> kit, bass, keys;
     int currentPreset = 0;
 
