@@ -1,0 +1,177 @@
+[
+ {
+  "file": "cab/syn-jazz-1x12.wav",
+  "name": "Kombo 1×12 otwarte – jazzowe (syntetyczne)",
+  "pack": "syntetyczne (Jesienna Warszawa)",
+  "license": "CC0",
+  "bright": 0
+ },
+ {
+  "file": "cab/syn-clean-2x12.wav",
+  "name": "Kombo 2×12 – czyste (syntetyczne)",
+  "pack": "syntetyczne (Jesienna Warszawa)",
+  "license": "CC0",
+  "bright": 0
+ },
+ {
+  "file": "cab/syn-lofi-1x8.wav",
+  "name": "Mała kolumienka 1×8 – lo-fi (syntetyczne)",
+  "pack": "syntetyczne (Jesienna Warszawa)",
+  "license": "CC0",
+  "bright": 0
+ },
+ {
+  "file": "cab/syn-tweed-1x12.wav",
+  "name": "Tweed 1×12 (syntetyczne)",
+  "pack": "syntetyczne (Jesienna Warszawa)",
+  "license": "CC0",
+  "bright": 0
+ },
+ {
+  "file": "cab/20-don-spinacio.wav",
+  "name": "4×12 Greenback (1960AX) – ciemna 1",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": -3.1
+ },
+ {
+  "file": "cab/18-wasabi-warrior.wav",
+  "name": "4×12 Greenback (1960AX) – ciemna 2",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": -2.0
+ },
+ {
+  "file": "cab/16-nacho-guacamole.wav",
+  "name": "4×12 Greenback (1960AX) – jasna 1",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": 0.8
+ },
+ {
+  "file": "cab/19-pesto-paladin.wav",
+  "name": "4×12 Greenback (1960AX) – jasna 2",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": 2.7
+ },
+ {
+  "file": "cab/17-pickle-punisher.wav",
+  "name": "4×12 Greenback (1960AX) – średnia 1",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": -0.4
+ },
+ {
+  "file": "cab/21-kill-dill.wav",
+  "name": "4×12 Greenback (1960AX) – średnia 2",
+  "pack": "Jesters Emerald Pack",
+  "license": "CC0",
+  "bright": -0.0
+ },
+ {
+  "file": "cab/11-wumbo.wav",
+  "name": "4×12 V30 / Rockdriver – ciemna 1",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -7.1
+ },
+ {
+  "file": "cab/13-cannibal-choir.wav",
+  "name": "4×12 V30 / Rockdriver – ciemna 2",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -5.0
+ },
+ {
+  "file": "cab/02-darth-genocider.wav",
+  "name": "4×12 V30 / Rockdriver – ciemna 3",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -4.6
+ },
+ {
+  "file": "cab/15-impaler-jim.wav",
+  "name": "4×12 V30 / Rockdriver – ciemna 4",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -4.4
+ },
+ {
+  "file": "cab/03-kitten-slayer.wav",
+  "name": "4×12 V30 / Rockdriver – ciemna 5",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -4.0
+ },
+ {
+  "file": "cab/05-iceburn-suicide.wav",
+  "name": "4×12 V30 / Rockdriver – jasna 1",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -2.1
+ },
+ {
+  "file": "cab/12-world-collider.wav",
+  "name": "4×12 V30 / Rockdriver – jasna 2",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -2.0
+ },
+ {
+  "file": "cab/07-manslaughter-joe.wav",
+  "name": "4×12 V30 / Rockdriver – jasna 3",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -1.9
+ },
+ {
+  "file": "cab/14-cathode-ray-fleshburn.wav",
+  "name": "4×12 V30 / Rockdriver – jasna 4",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": 0.1
+ },
+ {
+  "file": "cab/09-devils-cunnilingus.wav",
+  "name": "4×12 V30 / Rockdriver – jasna 5",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": 0.4
+ },
+ {
+  "file": "cab/04-kaiju-tamer.wav",
+  "name": "4×12 V30 / Rockdriver – średnia 1",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -3.8
+ },
+ {
+  "file": "cab/08-big-bubba.wav",
+  "name": "4×12 V30 / Rockdriver – średnia 2",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -3.5
+ },
+ {
+  "file": "cab/10-october-32th.wav",
+  "name": "4×12 V30 / Rockdriver – średnia 3",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -3.1
+ },
+ {
+  "file": "cab/06-vertical-lip-stabber.wav",
+  "name": "4×12 V30 / Rockdriver – średnia 4",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -3.0
+ },
+ {
+  "file": "cab/01-cookie-monster.wav",
+  "name": "4×12 V30 / Rockdriver – średnia 5",
+  "pack": "Jesters Brutal Pack",
+  "license": "CC0",
+  "bright": -2.2
+ }
+]

@@ -1,0 +1,21 @@
+JESIENNA WARSZAWA – gitara + zespół do jamowania (wersja na PC)
+
+FL STUDIO
+1. Po instalacji: Options → Manage plugins → Find plugins (wtyczka jest w C:\Program Files\Common Files\VST3).
+2. Options → Audio settings: wybierz sterownik ASIO (FL Studio ASIO albo sterownik swojego interfejsu),
+   ustaw bufor 128–256 próbek. Wejście interfejsu z gitarą wybierz w mikserze FL (pole "Input" na ścieżce miksera).
+3. Na tej ścieżce miksera wstaw efekt "Jesienna Warszawa". Monitorowanie: włącz nagrywanie/arm ścieżki albo
+   po prostu graj – FL przepuszcza wejście przez efekty.
+4. Gitarę podłącz do wejścia instrumentalnego (Hi-Z / "INST"). Jeśli gitara jest w prawym kanale, zmień
+   "Wejście gitary" na "Prawy kanał".
+5. Zespół: zakładka "Zespół" → "Zespół gra". Z włączonym "Synchronizuj z DAW" zespół gra, gdy FL odtwarza,
+   w tempie i metrum projektu. Wyłącz synchronizację, żeby zespół grał od razu we własnym tempie.
+
+SAMODZIELNA APLIKACJA
+"Jesienna Warszawa" z menu Start. Options → Audio/MIDI settings: wybierz sterownik (ASIO, jeśli jest,
+albo Windows Audio (Exclusive Mode) dla małych opóźnień), wejście z gitarą i wyjście. Wycisz "Mute audio input",
+jeśli używasz słuchawek – inaczej aplikacja wycisza wejście, żeby uniknąć sprzężeń z mikrofonu laptopa.
+
+DANE
+IR-y kolumn, przestrzenie i sample zespołu są w C:\ProgramData\Jesienna Warszawa.
+Licencje dźwięków: plik LICENCJE.md w tym folderze. Kod wtyczki: AGPL v3 (LICENSE.txt).

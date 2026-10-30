@@ -1,0 +1,78 @@
+name: PC (VST3 + aplikacja)
+on:
+  push:
+    branches: [main]
+    paths: ['pc/**', 'sample/manifest.json', '.github/workflows/pc.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ASIO SDK (opcjonalnie)
+        id: asio
+        continue-on-error: true
+        shell: bash
+        run: |
+          curl -sSL -o asio.zip https://www.steinberg.net/asiosdk
+          mkdir asio && cd asio && unzip -q ../asio.zip
+          d=$(dirname "$(dirname "$(find "$PWD" -name asio.h -path '*common*' | head -1)")")
+          test -n "$d" && echo "dir=$(cygpath -m "$d")" >> "$GITHUB_OUTPUT"
+      - name: Konfiguracja
+        shell: bash
+        run: |
+          extra=""
+          if [ -n "${{ steps.asio.outputs.dir }}" ]; then extra="-DJW_ASIO=ON -DASIO_SDK_DIR=${{ steps.asio.outputs.dir }}"; fi
+          cmake -S pc -B pc/build -G "Visual Studio 17 2022" -A x64 $extra 2>&1 | tee configure.log
+      - name: Kompilacja
+        shell: bash
+        run: cmake --build pc/build --config Release --parallel 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Błędy kompilacji
+        if: failure()
+        shell: bash
+        run: |
+          grep -hE "error|Error" build.log configure.log 2>/dev/null | head -25 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
+      - name: Pakowanie
+        shell: bash
+        run: |
+          A="pc/build/JesiennaWarszawa_artefacts/Release"
+          mkdir -p stage/vst3 stage/app stage/data/sample
+          cp -r "$A/VST3/Jesienna Warszawa.vst3" stage/vst3/
+          cp "$A/Standalone/Jesienna Warszawa.exe" stage/app/
+          cp -r pc/data/cab pc/data/rooms stage/data/
+          for k in zestaw kontrabas rhodes fortepian; do cp -r sample/$k stage/data/sample/; done
+          cp sample/manifest.json sample/LICENCJE.md stage/data/sample/
+          cp sample/LICENCJE.md stage/data/LICENCJE.md
+          cp pc/LICENSE stage/LICENSE.txt
+          cp pc/CZYTAJ.txt stage/CZYTAJ.txt
+          ls -R stage | head -40
+      - name: Instalator (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.${{ github.run_number }} pc\installer\jesienna.iss
+      - name: Wersja przenośna (zip)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force portable | Out-Null
+          Copy-Item "stage\app\Jesienna Warszawa.exe" portable\
+          Copy-Item -Recurse stage\data portable\data
+          Copy-Item -Recurse "stage\vst3\Jesienna Warszawa.vst3" portable\
+          Copy-Item stage\CZYTAJ.txt, stage\LICENSE.txt portable\
+          Compress-Archive -Path portable\* -DestinationPath dist\JesiennaWarszawa-przenosna.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jesienna-warszawa-pc
+          path: dist/*
+      - name: Wydanie
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pc-${{ github.run_number }}
+          name: Jesienna Warszawa PC ${{ github.run_number }}
+          body: |
+            Wtyczka VST3 (FL Studio i inne DAW) + samodzielna aplikacja dla Windows 10/11 (64-bit).
+            ASIO w aplikacji: ${{ steps.asio.outputs.dir != '' && 'tak' || 'nie (użyj Windows Audio Exclusive)' }}.
+            Pobierz JesiennaWarszawa-Setup.exe i uruchom. Instrukcja: CZYTAJ.txt.
+          files: dist/*
