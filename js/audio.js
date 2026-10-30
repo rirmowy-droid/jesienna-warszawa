@@ -74,6 +74,7 @@ function initAudio(){
   const bPk=ctx.createBiquadFilter(); bPk.type='peaking'; bPk.frequency.value=2800; bPk.Q.value=.8; bPk.gain.value=3;
   bedBus.connect(bHp); bHp.connect(bPk); bPk.connect(dryOut); bedRev = ctx.createGain(); bPk.connect(bedRev); bedRev.connect(revIn);
   revIn.connect(conv); conv.connect(fogF); dryOut.connect(fogF); fogF.connect(comp); comp.connect(master); master.connect(ctx.destination);
+  initMixer();
   applyMacros();
 }
 function makeIR(sec){

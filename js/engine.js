@@ -23,19 +23,7 @@ for (const d of LAYER_DEF) L[d.id] = {on:true, inst:d.def, vol:d.vol, int:.35, m
 
 const LB = {};
 const volCurve = v => v*v*1.6;
-const SENDS = {solo:{rev:.9, dly:1}, akordy:{rev:.65, dly:.15}, bas:{rev:.3, dly:0}, perk:{rev:.4, dly:0}};
-function layerBus(id){
-  if (LB[id]) return LB[id];
-  const g=ctx.createGain(); g.gain.value=volCurve(L[id].vol); LB[id]=g;
-  if (id==='tlo'){ g.connect(bedBus); return g; }
-  // clarity EQ per section: cut mud, a touch of presence for winds and keys
-  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = id==='bas' ? 30 : id==='perk' ? 40 : 110;
-  const pr=ctx.createBiquadFilter(); pr.type='peaking'; pr.frequency.value = id==='solo' ? 2600 : 3200; pr.Q.value=.7; pr.gain.value = id==='solo' ? 2.5 : id==='akordy' ? 1.5 : 0;
-  g.connect(hp); hp.connect(pr); pr.connect(dryOut);
-  const sd=SENDS[id]||{rev:.5,dly:0}; const r=ctx.createGain(); r.gain.value=sd.rev; pr.connect(r); r.connect(revIn);
-  if (sd.dly){ const d=ctx.createGain(); d.gain.value=sd.dly; pr.connect(d); d.connect(dlyIn); }
-  return g;
-}
+function layerBus(id){ return channelIn(id); }   // every layer plays into its mixer channel (js/mixer.js)
 function layerInsts(id, v){
   if (id==='tlo') return v==='chor' ? ['chor_tenory_oo','chor_alty_oo'] : v==='chor_ah' ? ['chor_tenory_ah','chor_alty_ah'] : [v];
   if (id==='perk') return v==='zestaw' ? ['zestaw'] : v==='jazz' ? ['talerz','hihat','werbel','beben'] : ['talerz','shaker','mark_tree'];

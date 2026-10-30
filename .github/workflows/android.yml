@@ -1,0 +1,52 @@
+name: Aplikacja na Androida (APK)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Pack the web app into the APK
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r index.html css js sp ir manifest.json android/app/src/main/assets/www/
+
+      - name: Build
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk jesienna-warszawa.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jesienna-warszawa-apk
+          path: jesienna-warszawa.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: Jesienna Warszawa – wersja ${{ github.run_number }}
+          body: Pobierz plik jesienna-warszawa.apk na telefon i zainstaluj (zgoda na instalację z nieznanych źródeł).
+          files: jesienna-warszawa.apk
+          make_latest: true

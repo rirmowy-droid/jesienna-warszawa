@@ -1,0 +1,290 @@
+[
+ {
+  "id": "studio_klub",
+  "name": "Stary pokój studyjny klubu",
+  "group": "Studia i pokoje",
+  "kind": "space",
+  "file": "ir/studio_klub.mp3",
+  "len": 2.04,
+  "source": "Rooms/Public/Colleges & Universities/University of Central Florida/Old Audio Engineering Club Room.wav"
+ },
+ {
+  "id": "studio_suchy",
+  "name": "Wyciszony pokój (sucho)",
+  "group": "Studia i pokoje",
+  "kind": "space",
+  "file": "ir/studio_suchy.mp3",
+  "len": 0.47,
+  "source": "Rooms/Residential/Colonial House/Colonial Bedroom (Mid Treatment).wav"
+ },
+ {
+  "id": "wenecja",
+  "name": "Weneckie wnętrze z XIII w.",
+  "group": "Studia i pokoje",
+  "kind": "space",
+  "file": "ir/wenecja.mp3",
+  "len": 1.65,
+  "source": "Rooms/Residential/13th Century Venetian Home/13th Century Venetian Home.wav"
+ },
+ {
+  "id": "salon",
+  "name": "Salon starego domu",
+  "group": "Studia i pokoje",
+  "kind": "space",
+  "file": "ir/salon.mp3",
+  "len": 1.65,
+  "source": "Rooms/Residential/Old Home/Old Home Living Room.wav"
+ },
+ {
+  "id": "panteon",
+  "name": "Panteon w Rzymie",
+  "group": "Sale i świątynie",
+  "kind": "space",
+  "file": "ir/panteon.mp3",
+  "len": 7.0,
+  "source": "Rooms/Historical/Landmarks/The Pantheon (Rome)/The Pantheon Optimal.wav"
+ },
+ {
+  "id": "kosciol",
+  "name": "Mały drewniany kościół",
+  "group": "Sale i świątynie",
+  "kind": "space",
+  "file": "ir/kosciol.mp3",
+  "len": 1.05,
+  "source": "Rooms/Historical/Religious/Drumheller's Little Church/Drumheller's Little Church.wav"
+ },
+ {
+  "id": "sala_balowa",
+  "name": "Sala balowa hotelu",
+  "group": "Sale i świątynie",
+  "kind": "space",
+  "file": "ir/sala_balowa.mp3",
+  "len": 4.52,
+  "source": "Rooms/Commercial/Hotels/Ballrooms/Royal Ballroom.wav"
+ },
+ {
+  "id": "teatr_ostia",
+  "name": "Antyczny teatr w Ostii",
+  "group": "Sale i świątynie",
+  "kind": "space",
+  "file": "ir/teatr_ostia.mp3",
+  "len": 2.0,
+  "source": "Outdoors/Historical/Ostia Antica Theatre/Ostia Antica Theatre.wav"
+ },
+ {
+  "id": "arena",
+  "name": "Hala sportowa (trybuny)",
+  "group": "Sale i świątynie",
+  "kind": "space",
+  "file": "ir/arena.mp3",
+  "len": 2.9,
+  "source": "Rooms/Public/Colleges & Universities/Missouri State University/MSU Arena Lower Bleachers Rear (Heavy Denoise).wav"
+ },
+ {
+  "id": "kawiarnia",
+  "name": "Kawiarnia – róg sali",
+  "group": "Kluby i kawiarnie",
+  "kind": "space",
+  "file": "ir/kawiarnia.mp3",
+  "len": 2.41,
+  "source": "Rooms/Commercial/Shops/Gold Coffee Shop/Gold Coffee Shop Lobby Corner.wav"
+ },
+ {
+  "id": "kawiarnia_wysoka",
+  "name": "Wysoka kawiarnia, z końca sali",
+  "group": "Kluby i kawiarnie",
+  "kind": "space",
+  "file": "ir/kawiarnia_wysoka.mp3",
+  "len": 2.5,
+  "source": "Rooms/Commercial/Shops/Tall Coffee Shop/Tall Coffee Shop Distant.wav"
+ },
+ {
+  "id": "piwnica",
+  "name": "Piwnica-bunkier (klub w podziemiach)",
+  "group": "Kluby i kawiarnie",
+  "kind": "space",
+  "file": "ir/piwnica.mp3",
+  "len": 1.2,
+  "source": "Rooms/Historical/Shelters/Menorcan Spanish Civil War Bunkers/Bunker 1 Rear Center.wav"
+ },
+ {
+  "id": "przejscie",
+  "name": "Przejście pod mostem",
+  "group": "Tunele i garaże",
+  "kind": "space",
+  "file": "ir/przejscie.mp3",
+  "len": 4.07,
+  "source": "Outdoors/Public/Parks/Florida SR40 Bridge Underpass.wav"
+ },
+ {
+  "id": "kanal",
+  "name": "Kanał burzowy",
+  "group": "Tunele i garaże",
+  "kind": "space",
+  "file": "ir/kanal.mp3",
+  "len": 0.98,
+  "source": "Enclosed Spaces/Miscellaneous/Storm Drain Bang Snap.wav"
+ },
+ {
+  "id": "garaz",
+  "name": "Garaż podziemny we Florencji",
+  "group": "Tunele i garaże",
+  "kind": "space",
+  "file": "ir/garaz.mp3",
+  "len": 3.61,
+  "source": "Rooms/Commercial/Parking Garages/Firenze Parking Garage.wav"
+ },
+ {
+  "id": "klatka",
+  "name": "Ceglana klatka schodowa",
+  "group": "Tunele i garaże",
+  "kind": "space",
+  "file": "ir/klatka.mp3",
+  "len": 6.0,
+  "source": "Rooms/Public/Colleges & Universities/University of Central Florida/MSB Brick Stairwell Downstairs.wav"
+ },
+ {
+  "id": "winda",
+  "name": "Winda towarowa",
+  "group": "Tunele i garaże",
+  "kind": "space",
+  "file": "ir/winda.mp3",
+  "len": 2.13,
+  "source": "Rooms/Public/Convention Centers/Orange County Convention Center/OCCC Freight Elevator.wav"
+ },
+ {
+  "id": "zaulek",
+  "name": "Zaułek w Rzymie",
+  "group": "Ulice",
+  "kind": "space",
+  "file": "ir/zaulek.mp3",
+  "len": 1.87,
+  "source": "Outdoors/Residential/Apartments/Rome Apartment Alley/Rome Apartment Alley.wav"
+ },
+ {
+  "id": "ulica",
+  "name": "Miejski pasaż między budynkami",
+  "group": "Ulice",
+  "kind": "space",
+  "file": "ir/ulica.mp3",
+  "len": 2.2,
+  "source": "Outdoors/Public/Streets/PCC 3rd Street Corridor XY Balloon Heavy Denoise.wav"
+ },
+ {
+  "id": "bloki",
+  "name": "Odbicie od bloków",
+  "group": "Ulice",
+  "kind": "space",
+  "file": "ir/bloki.mp3",
+  "len": 0.73,
+  "source": "Outdoors/Residential/Apartments/Suburban Apartments/Suburban Apartment 1 Avenue Slap.wav"
+ },
+ {
+  "id": "rampa",
+  "name": "Rampa rozładunkowa nocą",
+  "group": "Ulice",
+  "kind": "space",
+  "file": "ir/rampa.mp3",
+  "len": 1.98,
+  "source": "Outdoors/Commercial/Loading Docks/Eerie Loading Dock.wav"
+ },
+ {
+  "id": "podworko",
+  "name": "Podwórko",
+  "group": "Ulice",
+  "kind": "space",
+  "file": "ir/podworko.mp3",
+  "len": 0.53,
+  "source": "Outdoors/Residential/Old Home/Old Home Backyard Click Weird.wav"
+ },
+ {
+  "id": "plyta",
+  "name": "Płyta pogłosowa",
+  "group": "Pogłosy sprzętowe",
+  "kind": "space",
+  "file": "ir/plyta.mp3",
+  "len": 4.0,
+  "source": "Plates/Conner Plate I/Conner Plate I Sweeps/Conner Plate I 10s -42.wav"
+ },
+ {
+  "id": "sprezyna",
+  "name": "Sprężyna wzmacniacza",
+  "group": "Pogłosy sprzętowe",
+  "kind": "space",
+  "file": "ir/sprezyna.mp3",
+  "len": 3.5,
+  "source": "Springs/Reverb Amp 500/Reverb Amp 500 Sweeps/Spring Stereo 1.wav"
+ },
+ {
+  "id": "sprezyna_hg",
+  "name": "Sprężyna HG (miękka)",
+  "group": "Pogłosy sprzętowe",
+  "kind": "space",
+  "file": "ir/sprezyna_hg.mp3",
+  "len": 3.5,
+  "source": "Springs/HG Spring/HG Spring Stereo Soft.wav"
+ },
+ {
+  "id": "kaseta_dyktafon",
+  "name": "Magnetofon kasetowy (mikrofon → głośnik)",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/kaseta_dyktafon.mp3",
+  "len": 1.19,
+  "source": "Hardware/Tape/Portable Cassette Recorder/Portable Cassette Recorder Sweep Mic In Speaker Out.wav"
+ },
+ {
+  "id": "kaseta_deck",
+  "name": "Magnetofon kasetowy (deck)",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/kaseta_deck.mp3",
+  "len": 1.0,
+  "source": "Hardware/Tape/Consumer Cassette Deck/Consumer Cassette Deck Sweep.wav"
+ },
+ {
+  "id": "szpula",
+  "name": "Taśma szpulowa 4-ścieżkowa",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/szpula.mp3",
+  "len": 0.7,
+  "source": "Hardware/Tape/Sticky Quarter Inch 4 Track R2R/Sticky Quarter Inch 4 Track R2R Sweep Stereo.wav"
+ },
+ {
+  "id": "gramofon",
+  "name": "Gramofon szafkowy",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/gramofon.mp3",
+  "len": 0.26,
+  "source": "Hardware/Old Cabinet Gramophone/Old Cabinet Gramophone.wav"
+ },
+ {
+  "id": "leslie",
+  "name": "Głośnik obrotowy",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/leslie.mp3",
+  "len": 0.34,
+  "source": "Speakers/Rotary/Rotary L 984/Rotary L 984 Swirl.wav"
+ },
+ {
+  "id": "monitor",
+  "name": "Monitor sceniczny",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/monitor.mp3",
+  "len": 0.6,
+  "source": "Speakers/Monitors/12in 2-Way Wedge Floor Monitor.wav"
+ },
+ {
+  "id": "telefon",
+  "name": "Głośnik telefonu",
+  "group": "Kolor",
+  "kind": "color",
+  "file": "ir/telefon.mp3",
+  "len": 0.05,
+  "source": "Speakers/Phones/Smartphone 2020 Speaker Dispersion.wav"
+ }
+]

@@ -12,11 +12,14 @@
 <div class="wrap">
   <header>
     <h1>Jesienna<br><span>Warszawa</span></h1>
+    <button class="viewb" id="viewBtn">Mikser</button>
     <button class="play" id="playBtn" aria-label="Start">▶</button>
   </header>
   <div class="now"><span class="sec" id="sec">Dotknij ▶, żeby zacząć</span><span class="chord" id="chord"></span><span class="meterTag" id="meterTag">4/4</span></div>
   <div class="status" id="status"></div>
 
+  <div id="mixer"></div>
+  <div id="band">
   <div class="card">
     <div class="label">Nastrój</div>
     <div class="macros">
@@ -70,17 +73,19 @@
     <div class="row2">Głośność całości <input type="range" id="vol" min="0" max="100" value="80"></div>
   </div>
 
+  </div>
   <div class="credits">
     Harmonia standardów to same akordy, solówki są improwizowane na żywo, bez oryginalnych melodii.<br>
     Sample: VCSL i VSCO 2 CE (Versilian Studios, CC0), kontrabas D. Smolkena (CC0), Bear Sax (Karoryfer, CC0).
     Chór: Choir samples derived from VocalSet (Wilkins, Seetharaman, Wahl, Pardo 2018), CC BY 4.0, https://doi.org/10.5281/zenodo.1442513 — epic-choir by thepok.
-    Rhodes: jRhodes3d by Jeff Learman, CC BY-NC-SA 4.0. Zestaw perkusyjny: Salamander Drumkit by Alexander Holm, CC BY-SA 3.0. Syntezatory generowane na żywo.
+    Rhodes: jRhodes3d by Jeff Learman, CC BY-NC-SA 4.0. Zestaw perkusyjny: Salamander Drumkit by Alexander Holm, CC BY-SA 3.0. Przestrzenie i kolory: IR Library by Conner (MIT). Syntezatory generowane na żywo.
   </div>
 </div>
 <script src="js/core.js"></script>
 <script src="js/theory.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/mixer.js"></script>
 <script src="js/sky.js"></script>
 <script src="js/ui.js"></script>
 </body>

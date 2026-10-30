@@ -80,9 +80,9 @@ function buildLayers(){
       if (ctx){ if (d.id==='perk') loadInst('tom', null, true); if (d.id==='tlo') loadInst(soloInst('tlo'), null, true); else loadLayer(d.id, true, true); } };
     head.append(b,s,so);
     const ctl=document.createElement('div'); ctl.className='lctl';
-    const mk=(label, cls, val, fn)=>{ const l=document.createElement('label'); l.textContent=label; const r=document.createElement('input'); r.type='range'; r.min=0; r.max=100; r.value=Math.round(val*100); if (cls) r.className=cls; r.oninput=()=>fn(r.value/100); l.appendChild(r); return l; };
+    const mk=(label, cls, val, fn, volId)=>{ const l=document.createElement('label'); l.textContent=label; const r=document.createElement('input'); r.type='range'; r.min=0; r.max=100; r.value=Math.round(val*100); if (cls) r.className=cls; if (volId) r.dataset.layervol=volId; r.oninput=()=>fn(r.value/100); l.appendChild(r); return l; };
     ctl.append(
-      mk('Głośność', '', st.vol, v=>{ st.vol=v; if (ctx) layerBus(d.id).gain.setTargetAtTime(volCurve(v), ctx.currentTime, .05); }),
+      mk('Głośność', '', st.vol, v=>{ st.vol=v; if (ctx) layerBus(d.id).gain.setTargetAtTime(volCurve(v), ctx.currentTime, .05); }, d.id),
       mk('Intensywność', 'int', st.int, v=>{ st.int=v; }));
     const ml=document.createElement('label'); ml.textContent='Metrum warstwy'; ml.style.gridColumn='1 / -1';
     const ms=document.createElement('select'); ms.appendChild(new Option('wspólne (jak cały zespół)','wspólne')); for (const k of Object.keys(METERS)) ms.appendChild(new Option(k,k));
@@ -133,4 +133,13 @@ $('playBtn').onclick = async ()=>{
   b.disabled=false; b.textContent='■'; b.classList.add('on'); applyMacros();
 };
 
+// ---------- band / mixer views ----------
+let mixerBuilt=false;
+$('viewBtn').onclick = async ()=>{
+  const toMixer = !$('mixer').classList.contains('show');
+  $('mixer').classList.toggle('show', toMixer); $('band').classList.toggle('hidden', toMixer);
+  $('viewBtn').textContent = toMixer ? 'Zespół' : 'Mikser';
+  if (toMixer){ await buildMixerUI(); mixerBuilt=true; } else document.querySelectorAll('[data-layervol]').forEach(r=>r.value=Math.round(L[r.dataset.layervol].vol*100));
+  scrollTo(0,0);
+};
 buildLayers(); buildStrip(); bindStrip(); showTempo(); updatePolyInfo();

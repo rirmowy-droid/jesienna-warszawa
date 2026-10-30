@@ -7,6 +7,9 @@ Generatywna aplikacja muzyczna w klimacie ambient / dark jazz.
   - **Rytm:** tempo, metrum (od 2/4 do 12/8), zmiany metrum według sekwencji albo losowo co część, polirytm (każda warstwa może grać we własnym metrum, a wszystkie spotykają się na „raz”).
   - **Warstwy:** tło, bas, akordy, solista, perkusja – każda z wyborem instrumentu, przyciskiem Solo, głośnością, intensywnością (siła, gęstość, ozdobniki, swobodniejszy rytm) i własnym metrum.
   - Pokrętła nastroju Noc / Napięcie / Ruch i pasek do grania razem z muzyką.
+- **Mikser** (przycisk „Mikser” u góry): dla każdej warstwy głośność, panorama, korektor (niskie / środek z wyborem częstotliwości / wysokie), filtr dołu, przester, kompresja, kolor (odpowiedź impulsowa sprzętu: kaseta, taśma szpulowa, gramofon, głośnik obrotowy, monitor, telefon) i wysyłki na przestrzeń i echo; master z wyborem przestrzeni, „niedoskonałością miejsca” (szum tła, buczenie, oddech miasta), korektorem, kolorem, efektem taśmy (falowanie, nasycenie, szum) i limiterem. Ustawienia zapisują się w telefonie.
+- `ir/` – 32 prawdziwe odpowiedzi impulsowe (sale, kościół, Panteon, kawiarnie, piwnica, tunel pod mostem, garaż, klatka schodowa, zaułki, płyta i sprężyny pogłosowe, kaseta, taśma, gramofon, głośniki) z biblioteki [IR Library](https://github.com/itsmusician/IR-Library) Connera, licencja MIT (`ir/LICENSE-IR-Library.md`).
+- `android/` + `.github/workflows/android.yml` – aplikacja na Androida: GitHub sam buduje plik APK po każdej zmianie (zakładka **Releases** → `jesienna-warszawa.apk`).
 - `odsluch/` – odsłuchiwacz biblioteki: każdy instrument osobno, syntezatory i efekty.
 - `sample/` – biblioteka sampli. Każda nuta i każdy dźwięk to osobny plik MP3. Spis plików jest w `sample/manifest.json`.
 - `narzedzia/` – skrypty, którymi pocięto i przygotowano sample.
@@ -39,3 +42,9 @@ Kod jest podzielony tak, żeby nowe rzeczy dopisywać w jednym miejscu:
 | `js/sky.js` | animowane tło | |
 
 Zmiany w trakcie grania działają od razu (głośność, intensywność, solo, skala) albo od następnego taktu (utwór, tonacja, metrum, progresja).
+
+## Aplikacja na Androida
+
+Po każdej zmianie w repozytorium GitHub Actions buduje APK (ok. 5–10 minut) i publikuje go w zakładce **Releases**.
+Pobierz `jesienna-warszawa.apk` na telefonie i otwórz; za pierwszym razem Android poprosi o zgodę na instalację z tego źródła.
+Kolejne wersje instalują się na poprzednią (wszystkie są podpisane tym samym kluczem z `android/jesienna.keystore` – to klucz tylko do prywatnej instalacji, nie do Sklepu Play).
