@@ -23,7 +23,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - uses: android-actions/setup-android@v3
+      # the Ubuntu runner already has the Android SDK (ANDROID_HOME)
 
       - name: Pack the web app into the APK
         run: |
