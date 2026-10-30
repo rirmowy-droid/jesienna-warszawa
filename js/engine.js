@@ -14,7 +14,7 @@ const S = {
 const LAYER_DEF = [
   {id:'tlo',   name:'Tło',      opts:[['chor','Chór „oo”'],['chor_ah','Chór „ah”'],['syn_pad','Pad „mgła”'],['syn_smyczki','Smyczki synt.'],['kieliszki','Kieliszki']], def:'chor', vol:.75},
   {id:'bas',   name:'Bas',      opts:[['kontrabas','Kontrabas'],['syn_bas','Bas synt.']], def:'kontrabas', vol:.8},
-  {id:'akordy',name:'Akordy',   opts:[['rhodes','Rhodes'],['pianino','Pianino'],['fm_piano','FM piano'],['wibrafon','Wibrafon']], def:'rhodes', vol:.7},
+  {id:'akordy',name:'Akordy',   opts:[['rhodes','Rhodes'],['fortepian','Fortepian (Steinway)'],['pianino','Pianino'],['fm_piano','FM piano'],['wibrafon','Wibrafon']], def:'rhodes', vol:.7},
   {id:'solo',  name:'Solista',  opts:[['sax_tenor','Sax tenor'],['sax_baryton','Sax baryton'],['trabka_tlumik','Trąbka z tłumikiem'],['trabka','Trąbka'],['wibrafon','Wibrafon'],['syn_dzwon','Dzwon FM'],['dzwonki','Dzwonki']], def:'sax_tenor', vol:.75},
   {id:'perk',  name:'Perkusja', opts:[['zestaw','Zestaw jazzowy'],['jazz','Orkiestrowa'],['miekka','Miękka (smyczek, shaker)']], def:'zestaw', vol:.7},
 ];
@@ -23,7 +23,19 @@ for (const d of LAYER_DEF) L[d.id] = {on:true, inst:d.def, vol:d.vol, int:.35, m
 
 const LB = {};
 const volCurve = v => v*v*1.6;
-function layerBus(id){ if (!LB[id]){ LB[id]=ctx.createGain(); LB[id].gain.value=volCurve(L[id].vol); LB[id].connect(id==='tlo' ? bedBus : bus); } return LB[id]; }
+const SENDS = {solo:{rev:.9, dly:1}, akordy:{rev:.65, dly:.15}, bas:{rev:.3, dly:0}, perk:{rev:.4, dly:0}};
+function layerBus(id){
+  if (LB[id]) return LB[id];
+  const g=ctx.createGain(); g.gain.value=volCurve(L[id].vol); LB[id]=g;
+  if (id==='tlo'){ g.connect(bedBus); return g; }
+  // clarity EQ per section: cut mud, a touch of presence for winds and keys
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = id==='bas' ? 30 : id==='perk' ? 40 : 110;
+  const pr=ctx.createBiquadFilter(); pr.type='peaking'; pr.frequency.value = id==='solo' ? 2600 : 3200; pr.Q.value=.7; pr.gain.value = id==='solo' ? 2.5 : id==='akordy' ? 1.5 : 0;
+  g.connect(hp); hp.connect(pr); pr.connect(dryOut);
+  const sd=SENDS[id]||{rev:.5,dly:0}; const r=ctx.createGain(); r.gain.value=sd.rev; pr.connect(r); r.connect(revIn);
+  if (sd.dly){ const d=ctx.createGain(); d.gain.value=sd.dly; pr.connect(d); d.connect(dlyIn); }
+  return g;
+}
 function layerInsts(id, v){
   if (id==='tlo') return v==='chor' ? ['chor_tenory_oo','chor_alty_oo'] : v==='chor_ah' ? ['chor_tenory_ah','chor_alty_ah'] : [v];
   if (id==='perk') return v==='zestaw' ? ['zestaw'] : v==='jazz' ? ['talerz','hihat','werbel','beben'] : ['talerz','shaker','mark_tree'];
@@ -36,7 +48,7 @@ function soloInst(id){
 }
 const a_isChoir = () => L.tlo.inst==='chor' || L.tlo.inst==='chor_ah';
 const RANGE = {sax_tenor:[55,77], sax_baryton:[43,64], trabka_tlumik:[62,81], trabka:[60,82], wibrafon:[62,86], syn_dzwon:[62,88], dzwonki:[64,88],
-  rhodes:[60,84], pianino:[60,86], fm_piano:[60,86], kontrabas:[36,57], syn_bas:[36,58], chor_alty_oo:[60,76], chor_alty_ah:[60,76],
+  rhodes:[60,84], fortepian:[60,88], pianino:[60,86], fm_piano:[60,86], kontrabas:[36,57], syn_bas:[36,58], chor_alty_oo:[60,76], chor_alty_ah:[60,76],
   syn_smyczki:[60,84], kieliszki:[75,86]};
 const rangeOf = inst => RANGE[inst] || [60,80];
 
@@ -252,10 +264,10 @@ function schedule(){
     if (T.chord){
       const lv=sectionLevels(), who=soloist();
       if (L.perk.on && lv.perk)     playDrums(t, e8, lv, who);
-      if (L.bas.on && lv.bas)       who==='bas' ? playSolo('bas', t, e8) : playBass(t, e8, lv, who);
-      if (L.akordy.on && lv.akordy) { if (who==='akordy') { playSolo('akordy', t, e8); leftHand(t, e8); } else playComp(t, e8, who); }
-      if (L.tlo.on && lv.tlo && who==='tlo') playSolo('tlo', t, e8);
-      if (L.solo.on && lv.solo && who==='solo') playSolo('solo', t, e8);
+      if (L.bas.on && lv.bas)       who==='bas' ? playSolo('bas', t, e8, nextT) : playBass(t, e8, lv, who);
+      if (L.akordy.on && lv.akordy) { if (who==='akordy') { playSolo('akordy', t, e8, nextT); leftHand(t, e8); } else playComp(t, e8, who); }
+      if (L.tlo.on && lv.tlo && who==='tlo') playSolo('tlo', t, e8, nextT);
+      if (L.solo.on && lv.solo && who==='solo') playSolo('solo', t, e8, nextT);
       if (who!=='solo' && players.solo) players.solo.next = Math.max(players.solo.next, step+2);
     }
     nextT += e8; step++;
@@ -265,9 +277,9 @@ function schedule(){
 // timing feel: small human drift, more (and sometimes clearly off the grid) with intensity
 function human(id, t, e8){
   // drums keep the time (tight), bass almost; soloists and keys breathe more freely and, with intensity, push and drag
-  const it=L[id].int, anchor = id==='perk' ? .35 : id==='bas' ? .6 : 1;
-  let d = (Math.random()+Math.random()-1) * (.003 + it*.016) * anchor;
-  if (id!=='perk' && chance(it*it*.12*anchor)) d += (chance(.5)?-1:1) * e8 * rnd(.15, .4) * anchor;
+  const it=L[id].int, anchor = id==='perk' ? .3 : id==='bas' ? .5 : id==='akordy' ? .7 : 1;
+  let d = (Math.random()+Math.random()-1) * (.002 + it*.008) * anchor;               // a few ms – feels human, stays in time
+  if (id!=='perk' && it>.65 && chance((it-.65)*.25*anchor)) d += (chance(.6)?1:-1) * e8 * rnd(.06, .16);   // only when really fired up
   return Math.max(ctx.currentTime+.005, t + d);
 }
 
@@ -327,7 +339,7 @@ function playComp(t, e8, who){
   held.akordy.forEach(v=>v&&v.release(t+.03, .12)); held.akordy=[];
   const lay = compLayer(inst, level), short = it>.55 && chance(it*.5), tt=human('akordy',t,e8);
   for (const m of voicing(cc, level, 68 + Math.round(it*8))){
-    const v = noteOn(inst, m, {bus:layerBus('akordy'), when:tt+rnd(0,.02), vel, layer:lay, gain:.5});
+    const v = noteOn(inst, m, {bus:layerBus('akordy'), when:tt+rnd(0,.008), vel, layer:lay, gain:.5});
     if (v){ v.release(t + (short ? e8*rnd(.8,1.6) : e8*rnd(6,7.5)), short ? .06 : .2); held.akordy.push(v); }
   }
 }
@@ -363,7 +375,7 @@ function planPhrase(id, inst){
   if (P.mel===null) P.mel = Math.round((lo+hi)/2);
   P.phrase = notes; P.next = step + (bars + (chance(dens) ? (it>.6?0:1) : 2))*barLen;
 }
-function playSolo(id, t, e8){
+function playSolo(id, t, e8, tStraight){
   const inst=soloInst(id), P=playerFor(id), it=L[id].int, [lo,hi]=rangeOf(inst);
   if (step >= P.next) planPhrase(id, inst);
   const c=T.chord, sc=soloScale(c), legato = MONO.has(inst) || inst.startsWith('chor_') || inst==='syn_smyczki';
@@ -376,7 +388,7 @@ function playSolo(id, t, e8){
     if (chance(.18)) n.dir*=-1;
     if (target>hi-1){ target=hi-3; n.dir=-1; } if (target<lo+1){ target=lo+3; n.dir=1; }
     const m = snap(target, (strong||n.last) ? soloTargets(c) : sc); P.mel=m;
-    const tt = human(id, t + (n.at-step)*e8, e8), dur = n.len*e8;
+    const frac = n.at-step, tt = human(id, frac===0 ? t : tStraight + frac*e8, e8), dur = n.len*e8;
     // dynamics inside the phrase: higher notes a little louder, swung off-beats lifted, quick passing notes lighter
     const mid=(lo+hi)/2, offbeat = (n.at%1===0) && !layerBeat(id).onBeat;
     let vel = n.vel + (m-mid)/(hi-lo)*.16 + (offbeat ? .04 : 0) - (n.len<1 ? .07 : 0) + (n.cry ? .1 : 0);

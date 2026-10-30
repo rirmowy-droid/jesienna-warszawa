@@ -19,7 +19,13 @@ function slice(sp, start, dur){
   const sr=sp.sampleRate, a=Math.max(0,Math.floor((start-.01)*sr)), n=Math.min(sp.length-a, Math.floor((dur+.12)*sr));
   const b=ctx.createBuffer(sp.numberOfChannels,n,sr); for(let c=0;c<sp.numberOfChannels;c++) b.copyToChannel(sp.getChannelData(c).subarray(a,a+n),c); return b;
 }
-function prep(b){ b._on=onsetOf(b); b._rms=rmsOf(b); return b; }
+function leadOf(b, on){ // time from first sound to 50 % of the early peak = where the ear hears the note start
+  const d=b.getChannelData(0), sr=b.sampleRate, a=Math.floor(on*sr), n=Math.min(d.length-a, Math.floor(.5*sr)), w=Math.floor(.005*sr);
+  let pk=0; const env=[]; for (let i=0;i+w<=n;i+=w){ let m=0; for (let j=0;j<w;j++) m=Math.max(m,Math.abs(d[a+i+j])); env.push(m); pk=Math.max(pk,m); }
+  for (let i=0;i<env.length;i++) if (env[i]>=pk*.5) return i*w/sr;
+  return 0;
+}
+function prep(b){ b._on=onsetOf(b); b._rms=rmsOf(b); b._lead=leadOf(b, b._on); return b; }
 async function loadInst(key, layersWanted, quiet){
   if (!key || key.startsWith('syn_')) return;
   await loadManifest(); const I = MAN[key]; if (!I) return;
@@ -83,9 +89,9 @@ function applyMacros(){
   if (!ctx) return; const t = ctx.currentTime;
   dryOut.gain.setTargetAtTime(1 - M.noc*.4, t, .1);
   revIn.gain.setTargetAtTime(.25 + M.noc*.65, t, .1);
-  dlyIn.gain.setTargetAtTime(.12 + M.noc*.3 + M.nap*.1, t, .1);
-  dlyFb.gain.setTargetAtTime(.3 + M.noc*.3, t, .1);
-  dly.delayTime.setTargetAtTime(60/tempo()*.75, t, .3);
+  dlyIn.gain.setTargetAtTime(.08 + M.noc*.22, t, .1);
+  dlyFb.gain.setTargetAtTime(.18 + M.noc*.25, t, .1);
+  dly.delayTime.setTargetAtTime(Math.min(2.5, 60/tempo()), t, .3);                 // echo on the beat, not between beats
   fogF.frequency.setTargetAtTime(18000*Math.pow(3000/18000, Math.max(0,(M.noc-.3)/.7)), t, .15);   // fog only darkens in the upper half of 'Noc'
   bedRev.gain.setTargetAtTime(.35 + M.noc*.4, t, .1);
   master.gain.setTargetAtTime($('vol').value/100, t, .05);
@@ -103,18 +109,18 @@ function nearest(list, m){ let b=list[0]; for (const r of list) if (Math.abs(r-m
 // vib: rate (Hz), depth (cents), delay (s) before it blooms · air: breath noise mixed into the tone · drift: random tuning (cents)
 // swell: long notes grow a little and relax (messa di voce) · inhale: audible breath before a phrase · click: key/valve noise · trem: amplitude wobble
 const EXPR = {
-  sax_tenor:     {vib:[5.1,16,.28], air:[.035,2300,.9], drift:5, swell:.12, inhale:.05, click:.03},
-  sax_baryton:   {vib:[4.7,14,.32], air:[.04,1500,.9],  drift:5, swell:.1,  inhale:.06, click:.035},
-  trabka_tlumik: {vib:[5.4,10,.32], air:[.05,3200,1.1], drift:4, swell:.12, inhale:.045, click:.02},
-  trabka:        {vib:[5.5,12,.3],  air:[.03,3000,1],   drift:4, swell:.1,  inhale:.045, click:.02},
+  sax_tenor:     {vib:[5.2,11,.3],  air:[.014,2300,.9], drift:3, swell:.1,  inhale:.035, click:.012},
+  sax_baryton:   {vib:[4.8,10,.34], air:[.016,1500,.9], drift:3, swell:.08, inhale:.04,  click:.014},
+  trabka_tlumik: {vib:[5.4,8,.34],  air:[.02,3200,1.1], drift:3, swell:.1,  inhale:.03,  click:.008},
+  trabka:        {vib:[5.5,9,.32],  air:[.012,3000,1],  drift:3, swell:.08, inhale:.03,  click:.008},
   chor_alty_oo:  {vib:[5.0,14,.45], air:[.02,1700,.7],  drift:7, swell:.15, inhale:.03},
   chor_alty_ah:  {vib:[5.0,14,.45], air:[.02,1900,.7],  drift:7, swell:.15, inhale:.03},
   chor_tenory_oo:{vib:[4.8,12,.5],  air:[.015,1400,.7], drift:7, swell:.12},
   chor_tenory_ah:{vib:[4.8,12,.5],  air:[.015,1600,.7], drift:7, swell:.12},
   kontrabas:     {drift:4},
   wibrafon:      {trem:[5.2,.18]},
-  rhodes:        {drift:2, trem:[4.2,.06]},
-  pianino:       {drift:2}, fm_piano:{drift:1}, dzwonki:{drift:2}, kieliszki:{drift:6, swell:.1, vib:[3.5,8,.6]},
+  rhodes:        {drift:1.5, trem:[4.2,.04]},
+  pianino:       {drift:1.5}, fortepian:{drift:1}, fm_piano:{drift:1}, dzwonki:{drift:2}, kieliszki:{drift:6, swell:.1, vib:[3.5,8,.6]},
 };
 let noiseBuf=null;
 function noise(){ if (!noiseBuf){ noiseBuf=ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const d=noiseBuf.getChannelData(0); let b=0; for (let i=0;i<d.length;i++){ b=b*.6+(Math.random()*2-1)*.4; d[i]=b; } } return noiseBuf; }
@@ -135,7 +141,8 @@ const holdAt = (param, at) => { if (param.cancelAndHoldAtTime) param.cancelAndHo
 function noteOn(key, m, o={}){
   if (key.startsWith('syn_')) return synthOn(key, m, o);
   const I = MAN[key]; if (!I) return null;
-  const t = o.when ?? ctx.currentTime, vel = clamp(o.vel ?? .6, 0, 1);
+  const tGrid = o.when ?? ctx.currentTime, vel = clamp(o.vel ?? .6, 0, 1);
+  let t = tGrid;
   const av = LAYERS.filter(l=>I.layers[l] && ready[key+'|'+l]);
   if (!av.length) return null;
   // wanted layer not downloaded yet → use the nearest one that is, instead of staying silent
@@ -145,12 +152,14 @@ function noteOn(key, m, o={}){
   const file = pick(I.layers[layer][root]), buf = buffers[`${key}/${file}`]; if (!buf) return null;
   const isMono = o.mono ?? MONO.has(key), chan = o.ch || key;   // ch: separate legato channel per musical role
   const prev = isMono ? lastVoice[chan] : null, legato = !!(o.legato && prev && prev.alive);
+  if (!legato && o.align !== false) t = Math.max(ctx.currentTime+.002, tGrid - Math.min(buf._lead||0, .06));
   const X = EXPR[key] || {}, feel = o.feel ?? .5;                // feel: how expressive this player is right now (0..1)
   const cents = X.drift ? (Math.random()*2-1)*X.drift : 0;
   const rate = Math.pow(2,(m-root)/12 + cents/1200);
   const out = o.bus || bus;
   const s = ctx.createBufferSource(); s.buffer = buf;
-  const tone = ctx.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value = 2200 + vel*vel*13000;   // softer = darker, like a real player
+  const tone = ctx.createBiquadFilter(); tone.type='lowpass'; tone.Q.value=.5;
+  tone.frequency.value = (key.startsWith('chor_') ? 3500 : 6500) + vel*12000;                 // softer = a bit darker, but never muffled
   const g = ctx.createGain(); g.gain.value = 0; s.connect(tone); tone.connect(g); g.connect(out);
   const amp = (o.gain ?? 1) * (levels[key]?.[layer] ?? 1) * (I.gain?.[file] ?? 1) * (.42 + .58*vel) * .8;
   s.playbackRate.setValueAtTime(rate, t);

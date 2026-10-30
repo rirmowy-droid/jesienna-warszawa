@@ -8,7 +8,7 @@ Pełny spis plików jest w `manifest.json`.
 
 | Folder | Źródło | Licencja |
 |---|---|---|
-| pianino, fm_piano, wibrafon, wibrafon_smyczek, dzwonki, kieliszki, sax_tenor, sax_tenor_krotkie, hihat, talerz, werbel, beben, tom, shaker, mark_tree | [VCSL – Versilian Community Sample Library](https://github.com/sgossner/VCSL) | CC0: bez ograniczeń, bez obowiązku podawania autora |
+| fortepian, pianino, fm_piano, wibrafon, wibrafon_smyczek, dzwonki, kieliszki, sax_tenor, sax_tenor_krotkie, hihat, talerz, werbel, beben, tom, shaker, mark_tree | [VCSL – Versilian Community Sample Library](https://github.com/sgossner/VCSL) | CC0: bez ograniczeń, bez obowiązku podawania autora |
 | kontrabas, kontrabas_szumy | [D. Smolken – Rubner double bass](https://github.com/sfzinstruments/dsmolken.double-bass) | CC0 |
 | chor_* | [epic-choir](https://github.com/thepok/epic-choir) (thepok), oparte na zbiorze VocalSet | **CC BY 4.0**: wymagane podanie autorów (tekst niżej) |
 | rhodes | [jRhodes3d](https://github.com/sfzinstruments/jlearman.jRhodes3d) (Jeff Learman) | **CC BY-NC-SA 4.0** przy udostępnianiu sampli w aplikacji: tylko użytek niekomercyjny i z podaniem autora. Na użytek komercyjny autor udziela licencji na prośbę (jjlearman@gmail.com) |
