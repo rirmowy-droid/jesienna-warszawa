@@ -122,17 +122,23 @@ inline void backdrop (Graphics& g, Rectangle<int> area, const String& file, floa
     lastBackdrop() = { file, { x, y, w, h }, darken, owner };
 }
 
-/** Frosted glass: the soft copy of the current backdrop, clipped to r. */
-inline void frosted (Graphics& g, Rectangle<float> r, float corner, const void* owner)
+/** Comic-book panel fill: flat colour with a Ben-Day dot screen (replaces any glassy, blurred look). */
+inline Image dotTile()
 {
-    auto& b = lastBackdrop();
-    if (b.owner != owner || b.file.isEmpty()) return;
-    auto im = art (b.file.upToLastOccurrenceOf (".", false, false) + "_mat.jpg");
-    if (! im.isValid()) return;
+    static Image tile = []
+    {
+        Image t (Image::ARGB, 8, 8, true);
+        Graphics g (t); g.setColour (Colours::white); g.fillEllipse (2.2f, 2.2f, 3.6f, 3.6f);
+        return t;
+    }();
+    return tile;
+}
+inline void frosted (Graphics& g, Rectangle<float> r, float corner, const void*)
+{
     Graphics::ScopedSaveState ss (g);
     Path clip; clip.addRoundedRectangle (r, corner); g.reduceClipRegion (clip);
-    g.setImageResamplingQuality (Graphics::highResamplingQuality); g.setOpacity (1.0f);
-    g.drawImage (im, b.placed, RectanglePlacement::stretchToFit);
+    g.setColour (col::panel.withAlpha (0.55f)); g.fillRect (r);
+    g.setTiledImageFill (dotTile(), 0, 0, 0.06f); g.fillRect (r);
 }
 
 inline void drawSprite (Graphics& g, const String& file, Rectangle<float> box, RectanglePlacement place = RectanglePlacement::centred)
@@ -213,9 +219,10 @@ inline void nouveauFrame (Graphics& g, Rectangle<float> r, Colour gold, Colour l
 inline void card (Graphics& g, Rectangle<float> r, const String& title, float alpha = 0.84f, const void* glassOwner = nullptr)
 {
     const float corner = deco() ? 3.0f : 14.0f;
-    g.setColour (Colours::black.withAlpha (0.35f)); g.fillRoundedRectangle (r.translated (2, 4), corner);
+    g.setColour (col::ink); g.fillRoundedRectangle (r.translated (5, 5), corner);       // hard comic shadow
     if (glassOwner != nullptr) { frosted (g, r, corner, glassOwner); alpha *= 0.72f; }
     g.setColour (col::panel.withAlpha (alpha)); g.fillRoundedRectangle (r, corner);
+    g.setColour (col::ink); g.drawRoundedRectangle (r, corner, 2.5f);
     const float vine = jmin (44.0f, r.getHeight() * 0.3f, r.getWidth() * 0.18f);
     if (deco()) decoFrame (g, r.reduced (3), col::amber.withAlpha (0.8f));
     else nouveauFrame (g, r.reduced (3), col::amber, col::accent2, vine);
