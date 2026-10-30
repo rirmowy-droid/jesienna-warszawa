@@ -2,7 +2,8 @@
 
 Generatywna aplikacja muzyczna w klimacie ambient / dark jazz.
 
-- `index.html` – odsłuchiwacz biblioteki: wszystkie instrumenty, syntezatory, delay, pogłos i nocna scena „Noc na Pradze”.
+- `index.html` – aplikacja: generatywny utwór (forma: Mgła → Wejście → Noc → Szczyt → Oddech), trzy pokrętła nastroju (Noc, Napięcie, Ruch), warstwy do włączania i zmiany instrumentów oraz pasek do grania razem z muzyką.
+- `odsluch/` – odsłuchiwacz biblioteki: każdy instrument osobno, syntezatory i efekty.
 - `sample/` – biblioteka sampli. Każda nuta i każdy dźwięk to osobny plik MP3. Spis plików jest w `sample/manifest.json`.
 - `narzedzia/` – skrypty, którymi pocięto i przygotowano sample.
 
