@@ -14,6 +14,10 @@ Generatywna aplikacja muzyczna w klimacie ambient / dark jazz.
 - `sample/` – biblioteka sampli. Każda nuta i każdy dźwięk to osobny plik MP3. Spis plików jest w `sample/manifest.json`.
 - `narzedzia/` – skrypty, którymi pocięto i przygotowano sample.
 
+## Instrumenty z silnika (telefon)
+
+Na telefonie fortepian, pianino, Rhodes, FM piano, wibrafon, kieliszki, saksofony i trąbki są domyślnie syntezowane na żywo (`js/engines.js`, `js/wk/synth.js`): struny fortepianu jako rozciągnięte alikwoty z młoteczkiem i dudnieniem strun, Rhodes jako FM z „ping” stroika, wibrafon jako trzy mody sztabki z silnikiem tremolo, dęciaki jako impuls/piła przez formanty z oddechem, wibratem i legato jednym głosem. Kontrabas, chór, perkusja i dzwonki zostają z nagrań. Przełącznik: karta Warstwy → „Fortepiany, wibrafon i dęciaki”.
+
 ## Nazwy plików
 
 Instrumenty melodyczne: `sample/<instrument>/<nuta MIDI>_<dynamika>[_rr<n>].mp3`, np. `sample/rhodes/62_mf.mp3`.

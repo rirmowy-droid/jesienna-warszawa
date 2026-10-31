@@ -28,6 +28,7 @@ function leadOf(b, on){ // time from first sound to 50 % of the early peak = whe
 function prep(b){ b._on=onsetOf(b); b._rms=rmsOf(b); b._lead=leadOf(b, b._on); return b; }
 async function loadInst(key, layersWanted, quiet){
   if (!key || key.startsWith('syn_')) return;
+  if (useEngine(key)){ await loadEngine(); return; }          // played by the synth engine: no samples to download / decode
   await loadManifest(); const I = MAN[key]; if (!I) return;
   const core = SPRITE && I.type==='percussion' && I.core;
   const lays = I.type==='percussion' ? ['all'] : Object.keys(I.layers).filter(l=>!layersWanted || layersWanted.includes(l));
@@ -141,6 +142,7 @@ const holdAt = (param, at) => { if (param.cancelAndHoldAtTime) param.cancelAndHo
 
 function noteOn(key, m, o={}){
   if (key.startsWith('syn_')) return synthOn(key, m, o);
+  if (useEngine(key)) return engineOn(key, m, o);
   const I = MAN[key]; if (!I) return null;
   const tGrid = o.when ?? ctx.currentTime, vel = clamp(o.vel ?? .6, 0, 1);
   let t = tGrid;

@@ -72,7 +72,8 @@
     <div class="layers" id="layers"></div>
     <div class="row2">Głośność całości <input type="range" id="vol" min="0" max="100" value="80"></div>
     <label class="fld" style="margin-top:10px">Wydajność<select id="perf"><option value="auto">Automatycznie (telefon = lekko)</option><option value="lekki">Lekko – dla telefonu</option><option value="pelny">Pełna jakość</option></select></label>
-    <div class="note">Lekko: oddech i wibrato tylko u dęciaków, krótsze pogłosy, 32 kHz, wolniejsza animacja. Działa po odświeżeniu aplikacji.</div>
+    <label class="fld" style="margin-top:8px">Fortepiany, wibrafon i dęciaki<select id="instr"><option value="auto">Automatycznie (telefon = silnik)</option><option value="silnik">Silnik – syntezowane, lekkie</option><option value="sample">Sample – nagrania</option></select></label>
+    <div class="note">Lekko: oddech i wibrato tylko u dęciaków, krótsze pogłosy, 32 kHz, wolniejsza animacja. Silnik: fortepian, pianino, Rhodes, FM piano, wibrafon, kieliszki, saksofony i trąbki są syntezowane na żywo – nic nie trzeba wczytywać. Kontrabas, chór, perkusja i dzwonki zostają z nagrań. Działa po odświeżeniu aplikacji.</div>
   </div>
 
   </div>
@@ -86,6 +87,7 @@
 <script src="js/core.js"></script>
 <script src="js/theory.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/engines.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/mixer.js"></script>
 <script src="js/sky.js"></script>

@@ -145,3 +145,4 @@ $('viewBtn').onclick = async ()=>{
 buildLayers(); buildStrip(); bindStrip(); showTempo(); updatePolyInfo();
 
 $('perf').value = PERF.mode; $('perf').onchange = () => { try { localStorage.setItem('jw_perf', $('perf').value); } catch (e){} $('status').textContent = 'Wydajność zmieni się po odświeżeniu aplikacji.'; };
+$('instr').value = INSTR.mode; $('instr').onchange = () => { try { localStorage.setItem('jw_instr', $('instr').value); } catch (e){} $('status').textContent = 'Zmiana instrumentów zadziała po odświeżeniu aplikacji.'; };
