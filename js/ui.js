@@ -143,3 +143,5 @@ $('viewBtn').onclick = async ()=>{
   scrollTo(0,0);
 };
 buildLayers(); buildStrip(); bindStrip(); showTempo(); updatePolyInfo();
+
+$('perf').value = PERF.mode; $('perf').onchange = () => { try { localStorage.setItem('jw_perf', $('perf').value); } catch (e){} $('status').textContent = 'Wydajność zmieni się po odświeżeniu aplikacji.'; };

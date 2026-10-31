@@ -58,7 +58,7 @@ async function loadInst(key, layersWanted, quiet){
 // ======================= audio graph =======================
 function initAudio(){
   if (ctx) return;
-  ctx = new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback'});
+  ctx = new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback', sampleRate: PERF.lite ? 32000 : undefined});
   bus = ctx.createGain();
   master = ctx.createGain(); master.gain.value = .8;
   comp = ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=2.5; comp.attack.value=.02; comp.release.value=.3;
@@ -173,7 +173,8 @@ function noteOn(key, m, o={}){
   s.start(t, off);
   const extra=[];                                                 // nodes to stop with the note
   // vibrato that blooms after the attack, deeper with feeling; slightly irregular rate
-  if (X.vib && (o.vib ?? true)){
+  const rich = !PERF.lite || MONO.has(key);                       // lite: only the horns keep their own LFO / breath nodes
+  if (X.vib && (o.vib ?? true) && rich){
     const [vr, vd, vdel] = X.vib, depth = vd*(.55 + feel*.9);
     const lfo=ctx.createOscillator(); lfo.frequency.value = vr*rnd(.92,1.08);
     const lg=ctx.createGain(); lg.gain.value=0; lfo.connect(lg); lg.connect(s.playbackRate);
@@ -183,7 +184,7 @@ function noteOn(key, m, o={}){
     lfo.start(t); extra.push(lfo);
   }
   // breath inside the tone: more audible when soft (subtone), follows the note
-  if (X.air){
+  if (X.air && rich){
     const [ag, af, aq] = X.air, n=ctx.createBufferSource(); n.buffer=noise(); n.loop=true;
     const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=af*rnd(.9,1.1); bp.Q.value=aq;
     const ng=ctx.createGain(); ng.gain.value=0; n.connect(bp); bp.connect(ng); ng.connect(g);
@@ -194,7 +195,7 @@ function noteOn(key, m, o={}){
   if (X.click && !legato && o.click !== false) click(t-.004, X.click*(.5+vel), out);
   else if (X.click && legato && chance(.5)) click(t, X.click*.5, out);
   // gentle tremolo (vibraphone motor, Rhodes)
-  if (X.trem){ const tl=ctx.createOscillator(); tl.frequency.value=X.trem[0]; const tg=ctx.createGain(); tg.gain.value=amp*X.trem[1]; tl.connect(tg); tg.connect(g.gain); tl.start(t); extra.push(tl); }
+  if (X.trem && !PERF.lite){ const tl=ctx.createOscillator(); tl.frequency.value=X.trem[0]; const tg=ctx.createGain(); tg.gain.value=amp*X.trem[1]; tl.connect(tg); tg.connect(g.gain); tl.start(t); extra.push(tl); }
   if (legato) prev.release(t+.03, .035);
   const stopAll = at => { try{ s.stop(at); }catch(e){} extra.forEach(x=>{ try{ x.stop(at); }catch(e){} }); };
   const v = { m, alive:true, amp,

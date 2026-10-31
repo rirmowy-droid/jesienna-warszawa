@@ -27,7 +27,7 @@ async function loadIR(id){
   if (!id || id==='none') return null;
   if (!irBuffers[id]){
     const meta = IRS.find(x=>x.id===id); if (!meta) return null;
-    irBuffers[id] = decode(meta.file).then(b=>trimIR(b, meta.gain||1));
+    irBuffers[id] = decode(meta.file).then(b=>trimIR(b, meta.gain||1, PERF.lite ? 2.5 : 99));
   }
   return irBuffers[id];
 }
@@ -127,7 +127,7 @@ function initMixer(){
   fogF.connect(MS.low); MS.low.connect(MS.mid); MS.mid.connect(MS.high);
   MS.high.connect(MS.colorDry); MS.high.connect(MS.colorConv); MS.colorConv.connect(MS.colorWet);
   MS.colorDry.connect(MS.tapeIn); MS.colorWet.connect(MS.tapeIn);
-  MS.tapeIn.connect(MS.tapeDry); MS.tapeIn.connect(MS.wow); MS.wow.connect(MS.sat); MS.sat.connect(MS.tapeTone); MS.tapeTone.connect(MS.tapeWet);
+  MS.tapeIn.connect(MS.tapeDry); MS.tapeIn.connect(MS.wow); MS.wow.connect(MS.sat); MS.sat.connect(MS.tapeTone); MS.tapeTone.connect(MS.tapeWet); MS.tapeOn=true;
   MS.tapeDry.connect(comp); MS.tapeWet.connect(comp); MS.hissG.connect(comp);
   comp.connect(MS.limiter); MS.limiter.connect(master);
   // imperfections of the place: room tone / hum / distant city, filtered by the space itself
@@ -163,6 +163,8 @@ async function applyMaster(){
   else { set(MS.colorWet.gain, 0); set(MS.colorDry.gain, 1); }
   // tape: pitch wobble (wow & flutter), soft saturation, darker top, hiss
   const tp=m.tape;
+  // the tape path costs CPU even at zero mix (delay + 2x oversampled shaper): only connect it when used
+  if (tp>0 && !MS.tapeOn){ MS.tapeIn.connect(MS.wow); MS.tapeOn=true; } else if (tp<=0 && MS.tapeOn!==false){ try{ MS.tapeIn.disconnect(MS.wow); }catch(e){} MS.tapeOn=false; }
   set(MS.tapeWet.gain, tp>0 ? 1 : 0); set(MS.tapeDry.gain, tp>0 ? 0 : 1);
   set(MS.wowDepth.gain, tp*.0018); set(MS.flutDepth.gain, tp*.00025);
   MS.sat.curve = tp>0 ? driveCurve(.05 + tp*.35) : null;

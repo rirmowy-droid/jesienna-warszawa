@@ -20,10 +20,10 @@ function frame(){
   // skyline
   g2.fillStyle='rgba(8,8,12,.95)'; let x=0; let seed=7; while(x<W){ seed=(seed*9301+49297)%233280; const w=W*(.04+seed/233280*.08), h=H*(.12+((seed*7)%100)/100*.22); g2.fillRect(x,H-h,w,h); x+=w; }
   // rain
-  while (drops.length < 140*rain) drops.push({x:Math.random()*W, y:Math.random()*H, v:rnd(.6,1.2)});
+  while (drops.length < 140*rain*(PERF.lite?.35:1)) drops.push({x:Math.random()*W, y:Math.random()*H, v:rnd(.6,1.2)});
   g2.strokeStyle='rgba(180,190,220,.18)'; g2.lineWidth=1; g2.beginPath();
   for (let i=drops.length-1;i>=0;i--){ const d=drops[i]; d.y+=H*.012*d.v*(.6+M.ruch); d.x-=W*.0015; g2.moveTo(d.x,d.y); g2.lineTo(d.x+W*.003,d.y-H*.02);
-    if (d.y>H){ if (drops.length>140*rain) drops.splice(i,1); else { d.y=-10; d.x=Math.random()*W*1.1; } } }
+    if (d.y>H){ if (drops.length>140*rain*(PERF.lite?.35:1)) drops.splice(i,1); else { d.y=-10; d.x=Math.random()*W*1.1; } } }
   g2.stroke();
   // leaves
   if (leaves.length<10 && chance(.02)) leaves.push({x:Math.random()*W, y:-20, r:Math.random()*6, vx:rnd(-.6,.6), vy:rnd(.6,1.2), c:pick(['#a8482c','#cfae5c','#d9953f','#7a3522'])});
@@ -32,5 +32,5 @@ function frame(){
     if (l.y>H+20) leaves.splice(i,1); }
   glowLvl*=.93;
 }
-let lastF=0; function loop(ts){ if (ts-lastF > 40){ lastF=ts; frame(); } requestAnimationFrame(loop); }  // ~25 fps is enough and leaves room for audio
+let lastF=0; function loop(ts){ if (ts-lastF > (PERF.lite ? 100 : 40)){ lastF=ts; frame(); } requestAnimationFrame(loop); }  // ~25 fps is enough and leaves room for audio
 requestAnimationFrame(loop);

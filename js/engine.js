@@ -243,7 +243,7 @@ function schedule(){
   if (nextT < ctx.currentTime - .05){            // the phone was busy: jump ahead silently but keep bars and chords in step
     while (nextT < ctx.currentTime + .05){ tick(nextT, true); glideTempo(); nextT += eighth(); step++; }
   }
-  const ahead = document.hidden ? 2.5 : .6;
+  const ahead = document.hidden ? 2.5 : (PERF.lite ? 1 : .6);
   while (nextT < ctx.currentTime + ahead){
     glideTempo();
     const e8 = eighth(), gb = tick(nextT, false);
