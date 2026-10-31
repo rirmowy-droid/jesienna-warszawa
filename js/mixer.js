@@ -15,6 +15,7 @@ const MX = {
   master: {space:'studio_klub', spaceMix:.6, grime:.25, low:0, mid:0, midF:1200, high:0, color:'none', colorMix:.5, tape:0, comp:.35, width:1},
 };
 try { const saved = JSON.parse(localStorage.getItem('jw_mixer')||'null'); if (saved){ for (const id in saved.ch||{}) Object.assign(MX.ch[id]||{}, saved.ch[id]); Object.assign(MX.master, saved.master||{}); } } catch(e){}
+for (const id in MX.ch) MX.ch[id].room = 'wspolna';   // one shared space for the whole band (no per-instrument rooms)
 function saveMixer(){ try { localStorage.setItem('jw_mixer', JSON.stringify(MX)); } catch(e){} }
 
 let IRS = [];                     // list from ir/ir.json
@@ -71,7 +72,7 @@ async function applyChannel(id){
   const n=CH[id], c=MX.ch[id]; if (!n) return;
   await loadIRList();
   // older settings could put a whole room into the colour insert (heavy for a phone) → move it to the room choice
-  if (c.color && IRS.find(x=>x.id===c.color)?.kind==='space'){ if (!c.room || c.room==='wspolna') c.room=c.color; c.color='none'; saveMixer(); } const t=ctx.currentTime, set=(p,v)=>p.setTargetAtTime(v,t,.03);
+  if (c.color && IRS.find(x=>x.id===c.color)?.kind==='space'){ c.color='none'; saveMixer(); } const t=ctx.currentTime, set=(p,v)=>p.setTargetAtTime(v,t,.03);
   set(n.in.gain, volCurve(L[id].vol));
   n.drive.curve = c.drive>0 ? driveCurve(c.drive) : null;
   set(n.hpf.frequency, c.hpf); set(n.low.gain, c.low); set(n.mid.gain, c.mid); set(n.mid.frequency, c.midF); set(n.high.gain, c.high);
@@ -80,7 +81,7 @@ async function applyChannel(id){
   const audible = !c.mute && (!anySolo() || c.solo); set(n.mute.gain, audible ? 1 : 0);
   set(n.sendRev.gain, c.rev); set(n.sendDly.gain, c.dly);
   // own room for this instrument: one shared reverb per chosen room (two instruments in the same room share it)
-  const want = c.room && c.room!=='wspolna' ? c.room : 'wspolna';
+  const want = 'wspolna';
   if (want !== n.sendRevTarget){ n.sendRev.disconnect(); n.sendRev.connect(want==='wspolna' ? revIn : await roomIn(want)); n.sendRevTarget=want; releaseRooms(); }
   if (c.color && c.color!=='none'){ const b=await loadIR(c.color); if (b && n.colorConv.buffer!==b) n.colorConv.buffer=b; set(n.colorWet.gain, c.colorMix); set(n.colorDry.gain, 1-c.colorMix); }
   else { set(n.colorWet.gain, 0); set(n.colorDry.gain, 1); }
@@ -235,19 +236,15 @@ async function buildMixerUI(){
       mxSlider('Filtr dołu', 20, 400, 1, c.hpf, fmtHz, v=>ch('hpf',v)),
       mxSlider('Przester', 0, 1, .01, c.drive, fmtPct, v=>ch('drive',v)),
       mxSlider('Kompresja', 0, 1, .01, c.comp, fmtPct, v=>ch('comp',v)),
-      mxSlider('Przestrzeń (wysyłka)', 0, 1.2, .01, c.rev, fmtPct, v=>ch('rev',v)),
+      mxSlider('Pogłos (wysyłka)', 0, 1.2, .01, c.rev, fmtPct, v=>ch('rev',v)),
       mxSlider('Echo (wysyłka)', 0, 1.2, .01, c.dly, fmtPct, v=>ch('dly',v)));
-    const roomW=document.createElement('label'); roomW.className='fld'; roomW.textContent='Pomieszczenie tego instrumentu';
-    const rs=irSelect('space', c.room||'wspolna', false, async v=>{ c.room=v; saveMixer(); if (ctx){ buildChannelIfNeeded(id); await applyChannel(id); } roomHint(); }); rs.insertBefore(new Option('wspólne (jak cały zespół)','wspolna'), rs.firstChild); rs.value=c.room||'wspolna';
-    roomW.appendChild(rs);
     const colW2=document.createElement('label'); colW2.className='fld'; colW2.textContent='Kolor (taśma / gramofon / głośnik)';
     colW2.appendChild(irSelect('color', c.color, true, v=>ch('color',v)));
     const colM2=mxSlider('Ilość koloru', 0, 1, .01, c.colorMix, fmtPct, v=>ch('colorMix',v));
     const det=document.createElement('details'); const sum=document.createElement('summary'); sum.textContent='Korektor i efekty';
-    det.append(sum, roomW, g2, colW2, colM2);
+    det.append(sum, g2, colW2, colM2);
     card.append(head, det); box.appendChild(card);
   }
-  const hint=document.createElement('div'); hint.className='note'; hint.id='roomHint'; box.appendChild(hint); roomHint();
   const reset=document.createElement('button'); reset.className='btn'; reset.textContent='Przywróć ustawienia miksu';
   reset.onclick=()=>{ try{ localStorage.removeItem('jw_mixer'); }catch(e){} location.reload(); };
   const credit=document.createElement('div'); credit.className='note'; credit.style.marginTop='10px';
